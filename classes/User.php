@@ -8,18 +8,17 @@
  * Deadline : 1 Oktober 2026
  */
 
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
 class User
 {
-    private int $iduser;
-    private string $nama;
+    private int $user_id;
+    private string $username;
     private string $email;
     private array $role = [];
 
-    public function __construct(int $iduser, string $nama, string $email)
+    public function __construct(int $user_id, string $username, string $email)
     {
-        $this->iduser = $iduser;
-        $this->nama = $nama;
+        $this->user_id = $user_id;
+        $this->username = $username;
         $this->email = strtolower(trim($email));
     }
 
@@ -27,10 +26,10 @@ class User
     {
         $role_aktif = $this->get_role_aktif();
         return [
-            'iduser' => $this->iduser,
-            'nama'   => $this->nama,
-            'email'  => $this->email,
-            'role'   => $role_aktif === null ? '-' : $role_aktif->get_data()['nama_role'],
+            'user_id'  => $this->user_id,
+            'username' => $this->username,
+            'email'    => $this->email,
+            'role'     => $role_aktif === null ? '-' : $role_aktif->get_data()['nama_role'],
         ];
     }
 
@@ -54,7 +53,6 @@ class User
         return null;
     }
 
-    // Penambahan Method dari Tugas 3
     public function hapus_role(int $idrole): void
     {
         foreach ($this->role as $key => $r) {
@@ -78,6 +76,6 @@ class User
 
     public function __toString(): string
     {
-        return $this->nama . " <" . $this->email . ">";
+        return $this->username . " <" . $this->email . ">";
     }
 }
