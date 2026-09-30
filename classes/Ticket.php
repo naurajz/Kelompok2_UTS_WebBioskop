@@ -11,9 +11,6 @@
 // Panggil file class induk (BaseModel.php) karena class Ticket adalah turunan (anak) dari BaseModel
 require_once __DIR__ . '/BaseModel.php';
 
-// ==============================================================================
-// BAN SEREP: FALLBACK BASEMODEL
-// ==============================================================================
 // Ini ban serep sementara: kalau teman kelompok yang ngerjain Core-02 belum selesai bikin BaseModel,
 // kita sediakan kerangka BaseModel darurat di sini biar kode Ticket kita nggak error pas dites.
 // Begitu BaseModel asli dari tim Core-02 sudah ada di repo, blok ini otomatis dilewati (nggak bentrok).
