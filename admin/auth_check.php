@@ -9,4 +9,3 @@
  */
 
 // TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
-echo "ini adalah file auth_check.php";
