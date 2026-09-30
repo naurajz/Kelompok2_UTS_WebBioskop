@@ -8,58 +8,71 @@
  * Deadline : 3 Oktober 2026
  */
 
+// Mulai sesi PHP kalau belum aktif, supaya kita bisa baca data login user ($_SESSION)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Hubungkan ke class Ticket backend yang sudah kita buat di folder classes
 require_once __DIR__ . '/classes/Ticket.php';
 
-// Inisialisasi koneksi database PDO
+// Siapkan variabel koneksi database PDO dan penampung pesan error
 $db = null;
 $dbError = null;
 
+// Cek apakah class Database bikinan teman tim DB-03 sudah ada di folder config
 if (file_exists(__DIR__ . '/config/Database.php')) {
     require_once __DIR__ . '/config/Database.php';
     if (class_exists('Database')) {
+        // Ambil koneksi PDO resmi dari class Database
         $db = (new Database())->getConnection();
     }
 }
 
-// Fallback koneksi PDO jika class Database belum diisi oleh tim DB-03
+// Fallback koneksi: kalau class Database belum selesai dibuat teman, kita sediakan koneksi PDO langsung ke MySQL XAMPP
 if (!$db) {
     try {
         $db = new PDO("mysql:host=localhost;dbname=bioskop;charset=utf8mb4", "root", "", [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Lempar exception kalau query bermasalah
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC        // Format hasil fetch otomatis jadi array asosiatif
         ]);
     } catch (PDOException $e) {
         $dbError = $e->getMessage();
     }
 }
 
-// Tangkap parameter order_id atau booking_code dari query string
+// Tangkap parameter dari URL browser, mendukung dua format: ?order_id=... atau ?code=...
 $orderIdentifier = $_GET['order_id'] ?? $_GET['code'] ?? null;
+
+// Buat objek model Ticket dengan menyuntikkan koneksi database $db
 $ticketModel = new Ticket($db);
 $ticketData = null;
 $errorMessage = null;
 
-// Cek autentikasi login (Customer atau Admin)
+// Ambil status autentikasi user dari session (apakah sudah login, rolenya apa, dan siapa ID usernya)
 $isLoggedIn = isset($_SESSION['user_id']);
 $currentUserRole = $_SESSION['role'] ?? 'customer';
 $currentUserId = $_SESSION['user_id'] ?? null;
 
+// KONDISI 1: Kalau pengguna membuka tiket.php tanpa menyertakan ID pesanan atau kode booking di link URL
 if (!$orderIdentifier) {
     $errorMessage = "Parameter order ID atau kode booking tidak ditemukan. Silakan buka tiket melalui halaman Riwayat Pesanan.";
-} elseif ($dbError) {
+} 
+// KONDISI 2: Kalau MySQL di XAMPP belum dinyalakan atau database 'bioskop' belum diimport
+elseif ($dbError) {
     $errorMessage = "Koneksi database belum tersedia ($dbError). Pastikan MySQL XAMPP aktif dan database 'bioskop' telah diimport.";
-} else {
-    // Ambil data lengkap tiket, film, jadwal, dan studio (Ticket-01 & Ticket-02)
+} 
+// KONDISI 3: Semua syarat awal terpenuhi, lakukan penarikan data tiket dari database
+else {
+    // Panggil method backend getOrderTicketDetails() untuk mengambil paket lengkap: film + jam + studio + daftar tiket
     $ticketData = $ticketModel->getOrderTicketDetails($orderIdentifier);
 
+    // Kalau data tidak ditemukan di database (misal kode booking salah ketik)
     if (!$ticketData) {
         $errorMessage = "Pesanan dengan ID / Kode Booking \"$orderIdentifier\" tidak ditemukan.";
     } else {
-        // Validasi kepemilikan pesanan: pastikan pesanan milik user yang login atau role admin
+        // Proteksi keamanan: jika user login sebagai customer, pastikan tiket ini miliknya sendiri (bukan milik akun lain)
+        // Catatan: Jika yang login adalah 'admin', maka admin diizinkan melihat tiket siapa saja untuk validasi
         if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ticketData['user_id'] != $currentUserId) {
             $errorMessage = "Akses ditolak: Anda tidak memiliki hak untuk melihat e-ticket akun lain.";
             $ticketData = null;
