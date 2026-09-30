@@ -24,7 +24,7 @@ try {
         if (password_verify($password, $userData['password']) || $password === $userData['password']) {
             
             // Inisialisasi object User & Role (Sesuai dengan implementasi OOP)
-            $userObj = new User((int) $userData['id'], $userData['name'] ?? 'User', $userData['email']);
+            $userObj = new User((int) $userData['user_id'], $userData['username'] ?? 'User', $userData['email']);
             
             // Misal role user diambil dari kolom role
             $roleName = $userData['role'] ?? 'customer'; 
@@ -33,7 +33,7 @@ try {
             $userObj->set_role($roleObj);
             
             // Set Session
-            $_SESSION['user_id'] = $userData['id'];
+            $_SESSION['user_id'] = $userData['user_id'];
             $_SESSION['role'] = $roleName;
             $_SESSION['user'] = $userObj->get_user(); // menyimpan data dari User Object
             
