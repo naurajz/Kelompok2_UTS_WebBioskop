@@ -1,4 +1,5 @@
 <?php
+
 /**
  * File     : admin/auth_check.php
  * Card     : Auth-02 Logout & Proteksi Halaman
