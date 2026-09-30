@@ -1,10 +1,18 @@
 <?php
-/**
- * File     : classes/Crudable.php
- * Card     : Core-02 BaseModel & Crudable
- * Tugas    : Interface Crudable. Method wajib: getAll(), getById($id), save(), delete($id).
- * PIC      : (isi nama)
- * Deadline : 1 Oktober 2026
- */
+interface Crudable {
+    // 1. Read: Mengambil seluruh data
+    public function getAll(): array;
 
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
+    // 2. Read: Mengambil data berdasarkan ID (Primary Key)
+    public function getById($id);
+
+    // 3. Create: Menambah data baru
+    public function create(array $data): bool;
+
+    // 4. Update: Mengubah data berdasarkan ID
+    public function update($id, array $data): bool;
+
+    // 5. Delete: Menghapus data berdasarkan ID
+    public function delete($id): bool;
+}
+?>
