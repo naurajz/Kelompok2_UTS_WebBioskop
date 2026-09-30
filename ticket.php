@@ -70,25 +70,8 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $ticketData ? 'E-Ticket - ' . htmlspecialchars($ticketData['booking_code']) : 'E-Ticket Bioskop' ?></title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
-
+    <title>E-Ticket - <?= htmlspecialchars($ticketData['booking_code'] ?? 'Bioskop') ?></title>
     <style>
-        :root {
-            --primary: #e50914;
-            --primary-hover: #b80710;
-            --dark-bg: #0f1015;
-            --card-bg: #181920;
-            --ticket-bg: #ffffff;
-            --text-dark: #1e2029;
-            --text-muted: #6b7280;
-            --accent: #f59e0b;
-            --border-color: #e5e7eb;
-            --success: #10b981;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
@@ -96,29 +79,28 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
         }
 
         body {
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--dark-bg);
-            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121418;
+            color: #333333;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 40px 20px;
+            padding: 40px 15px;
         }
 
         .container {
             width: 100%;
-            max-width: 820px;
-            margin: 0 auto;
+            max-width: 800px;
         }
 
-        /* Top Action Bar (No Print) */
+        /* Action Bar */
         .action-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            gap: 12px;
+            margin-bottom: 20px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
@@ -126,112 +108,90 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: 9px 16px;
+            border-radius: 6px;
             font-size: 14px;
             font-weight: 600;
             text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
             border: none;
         }
 
-        .btn-print {
-            background-color: var(--primary);
-            color: #ffffff;
-            box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
-        }
-
-        .btn-print:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
         .btn-secondary {
-            background-color: #272833;
-            color: #d1d5db;
+            background-color: #242933;
+            color: #e5e7eb;
+            cursor: pointer;
         }
 
         .btn-secondary:hover {
-            background-color: #373949;
-            color: #ffffff;
+            background-color: #313847;
         }
 
+        .btn-print {
+            background-color: #dc2626;
+            color: #ffffff;
+            opacity: 0.9;
+            cursor: default;
+            pointer-events: none;
+            user-select: none;
+        }
 
-        /* E-Ticket Main Card */
-        .ticket-wrapper {
-            background: var(--ticket-bg);
-            color: var(--text-dark);
-            border-radius: 18px;
-            overflow: hidden;
+        /* Ticket Card */
+        .ticket-card {
+            background: #ffffff;
+            border-radius: 12px;
             display: flex;
             flex-direction: row;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
         }
 
-        /* Left Side: Main Movie & Screening Details */
+        /* Main Section */
         .ticket-main {
             flex: 1 1 65%;
-            padding: 32px;
+            padding: 28px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            position: relative;
         }
 
         .ticket-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px dashed var(--border-color);
-            padding-bottom: 20px;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 16px;
             margin-bottom: 20px;
         }
 
-        .cinema-brand {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .cinema-logo {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--primary);
+        .cinema-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #dc2626;
             letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .cinema-sub {
-            font-size: 12px;
-            color: var(--text-muted);
-            font-weight: 500;
         }
 
         .badge-status {
             background-color: #e0f2fe;
             color: #0369a1;
-            padding: 6px 12px;
-            border-radius: 20px;
+            padding: 5px 12px;
+            border-radius: 15px;
             font-size: 12px;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .movie-info-section {
+        .movie-section {
             display: flex;
-            gap: 20px;
-            margin-bottom: 24px;
+            gap: 18px;
+            margin-bottom: 22px;
         }
 
         .movie-poster {
-            width: 90px;
-            height: 125px;
-            border-radius: 8px;
+            width: 85px;
+            height: 120px;
+            border-radius: 6px;
             object-fit: cover;
-            background-color: #e5e7eb;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background-color: #f3f4f6;
+            border: 1px solid #e5e7eb;
         }
 
         .movie-details {
@@ -241,30 +201,32 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
         }
 
         .movie-title {
-            font-size: 24px;
-            font-weight: 800;
+            font-size: 22px;
+            font-weight: 700;
             color: #111827;
             margin-bottom: 6px;
-            line-height: 1.2;
         }
 
         .movie-meta {
             font-size: 13px;
-            color: var(--text-muted);
+            color: #6b7280;
             margin-bottom: 8px;
-            font-weight: 500;
         }
 
-        /* Grid Information */
+        .movie-customer {
+            font-size: 13px;
+            color: #374151;
+        }
+
+        /* Info Grid */
         .info-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            padding: 18px;
+            gap: 14px;
+            padding: 16px;
             background: #f9fafb;
-            border-radius: 12px;
-            border: 1px solid #f3f4f6;
-            margin-bottom: 24px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
         }
 
         .info-item {
@@ -275,93 +237,23 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
         .info-label {
             font-size: 11px;
             font-weight: 600;
-            color: var(--text-muted);
+            color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .info-value {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             color: #1f2937;
         }
 
-        /* Tickets List Section (Ticket-01) */
-        .tickets-list-section {
-            margin-top: auto;
-        }
-
-        .tickets-list-title {
-            font-size: 13px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-        }
-
-        .tickets-chips {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .ticket-chip {
-            background-color: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            padding: 6px 12px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-        }
-
-        .ticket-chip strong {
-            font-family: 'Space Mono', monospace;
-            color: var(--primary);
-        }
-
-        .ticket-chip span {
-            color: #4b5563;
-        }
-
-        /* Perforated Divider (Notches) */
-        .ticket-divider {
-            width: 2px;
-            background-image: linear-gradient(to bottom, #d1d5db 60%, rgba(255, 255, 255, 0) 0%);
-            background-position: left;
-            background-size: 2px 14px;
-            background-repeat: repeat-y;
-            position: relative;
-        }
-
-        .ticket-divider::before,
-        .ticket-divider::after {
-            content: '';
-            position: absolute;
-            width: 28px;
-            height: 28px;
-            background-color: var(--dark-bg);
-            border-radius: 50%;
-            left: -14px;
-            z-index: 2;
-        }
-
-        .ticket-divider::before {
-            top: -14px;
-        }
-
-        .ticket-divider::after {
-            bottom: -14px;
-        }
-
-        /* Right Side: Stub & QR Code (Ticket-03) */
+        /* Stub Section */
         .ticket-stub {
             flex: 0 0 35%;
             background-color: #fafafa;
-            padding: 32px 24px;
+            border-left: 2px dashed #d1d5db;
+            padding: 28px 20px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -369,112 +261,68 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
             text-align: center;
         }
 
-        .booking-code-box {
-            margin-bottom: 16px;
-        }
-
         .booking-code-label {
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
+            color: #6b7280;
             margin-bottom: 6px;
         }
 
-        .booking-code-val {
-            font-family: 'Space Mono', monospace;
-            font-size: 24px;
+        .booking-code-box {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 22px;
             font-weight: 700;
-            color: var(--primary);
+            color: #dc2626;
             letter-spacing: 2px;
             background: #fef2f2;
             padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px dashed #fca5a5;
-            display: inline-block;
-        }
-
-        .stub-info-box {
-            margin: 20px 0;
-            padding: 14px;
-            background: #ffffff;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            border: 1px solid #fecaca;
+            margin-bottom: 16px;
         }
 
         .stub-note {
             font-size: 12px;
-            color: var(--text-muted);
+            color: #6b7280;
             line-height: 1.4;
+            margin: 15px 0;
         }
 
-        .total-price-box {
+        .total-box {
             border-top: 1px solid #e5e7eb;
             width: 100%;
             padding-top: 14px;
-            margin-top: auto;
         }
 
-        .price-label {
+        .total-label {
             font-size: 11px;
-            color: var(--text-muted);
+            color: #6b7280;
             text-transform: uppercase;
             font-weight: 600;
         }
 
-        .price-value {
+        .total-value {
             font-size: 18px;
-            font-weight: 800;
+            font-weight: 700;
             color: #111827;
         }
 
-        /* Footer Notes */
-        .ticket-notes {
-            margin-top: 24px;
+        .ticket-footer {
+            margin-top: 20px;
             text-align: center;
             font-size: 12px;
             color: #9ca3af;
         }
 
-        /* ====================================================
-           PRINT STYLES (@media print)
-           Jika dicetak, hanya menampilkan blank putih saja
-           ==================================================== */
-        @media print {
-            body {
-                display: none !important;
-            }
-        }
-
-        /* Responsive on Mobile Devices */
-        @media (max-width: 680px) {
-            .ticket-wrapper {
+        @media (max-width: 640px) {
+            .ticket-card {
                 flex-direction: column;
             }
-
-            .ticket-divider {
-                width: 100%;
-                height: 2px;
-                background-image: linear-gradient(to right, #d1d5db 60%, rgba(255, 255, 255, 0) 0%);
-                background-size: 14px 2px;
-                background-repeat: repeat-x;
+            .ticket-stub {
+                border-left: none;
+                border-top: 2px dashed #d1d5db;
             }
-
-            .ticket-divider::before,
-            .ticket-divider::after {
-                top: -14px;
-            }
-
-            .ticket-divider::before {
-                left: -14px;
-            }
-
-            .ticket-divider::after {
-                right: -14px;
-                left: auto;
-            }
-
             .info-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -485,18 +333,14 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
 
 <div class="container">
 
-    <!-- Tombol Navigasi & Cetak (Disembunyikan saat dicetak) -->
-    <div class="action-bar no-print">
+    <!-- Tombol Navigasi & Tampilan Tombol Cetak (Non-aktif / Tanpa Fungsi) -->
+    <div class="action-bar">
         <div style="display: flex; gap: 8px;">
-            <a href="history.php" class="btn btn-secondary">
-                &larr; Riwayat Pesanan
-            </a>
-            <a href="index.php" class="btn btn-secondary">
-                Beranda
-            </a>
+            <a href="history.php" class="btn btn-secondary">&larr; Riwayat Pesanan</a>
+            <a href="index.php" class="btn btn-secondary">Beranda</a>
         </div>
-        <button onclick="window.print()" class="btn btn-print" id="btnPrint">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button type="button" class="btn btn-print" tabindex="-1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 6 2 18 2 18 9"></polyline>
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                 <rect x="6" y="14" width="12" height="8"></rect>
@@ -505,120 +349,91 @@ if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ti
         </button>
     </div>
 
-    <!-- Kartu E-Ticket Siap Cetak (Ticket-02) -->
-    <div class="ticket-wrapper" id="eTicketCard">
+    <!-- Kartu E-Ticket Bioskop -->
+    <div class="ticket-card">
             
-            <!-- Sisi Kiri: Detail Film, Jadwal, & Lembar Tiket -->
-            <div class="ticket-main">
-                
-                <div class="ticket-header">
-                    <div class="cinema-brand">
-                        <span class="cinema-logo">CINESTAR CINEMA</span>
-                        <span class="cinema-sub">Official Digital Pass &amp; Entry Ticket</span>
-                    </div>
-                    <span class="badge-status">
-                        <?= htmlspecialchars($ticketData['order_status'] ?? 'CONFIRMED') ?>
+        <!-- Sisi Kiri: Informasi Film & Jadwal -->
+        <div class="ticket-main">
+            
+            <div class="ticket-header">
+                <div class="cinema-title">CINESTAR CINEMA</div>
+                <span class="badge-status">
+                    <?= htmlspecialchars($ticketData['order_status'] ?? 'CONFIRMED') ?>
+                </span>
+            </div>
+
+            <div class="movie-section">
+                <?php if (!empty($ticketData['movie_poster'])): ?>
+                    <img src="<?= htmlspecialchars($ticketData['movie_poster']) ?>" alt="Poster" class="movie-poster" onerror="this.style.display='none'">
+                <?php endif; ?>
+                <div class="movie-details">
+                    <h1 class="movie-title"><?= htmlspecialchars($ticketData['movie_title'] ?? 'Judul Film') ?></h1>
+                    <p class="movie-meta">
+                        <?= htmlspecialchars($ticketData['genre_name'] ?? 'General') ?> &bull; 
+                        <?= (int)($ticketData['movie_duration'] ?? 120) ?> Menit
+                    </p>
+                    <p class="movie-customer">
+                        Pemesan: <strong><?= htmlspecialchars($ticketData['customer_name'] ?? 'Customer') ?></strong>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Grid Rincian Jadwal dan Tiket -->
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Studio</span>
+                    <span class="info-value"><?= htmlspecialchars($ticketData['studio_name'] ?? 'Studio 1') ?></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tanggal Tayang</span>
+                    <span class="info-value">
+                        <?= !empty($ticketData['show_date']) ? date('d M Y', strtotime($ticketData['show_date'])) : '-' ?>
                     </span>
                 </div>
-
-                <div class="movie-info-section">
-                    <?php if (!empty($ticketData['movie_poster'])): ?>
-                        <img src="<?= htmlspecialchars($ticketData['movie_poster']) ?>" alt="Poster" class="movie-poster" onerror="this.style.display='none'">
-                    <?php endif; ?>
-                    <div class="movie-details">
-                        <h1 class="movie-title"><?= htmlspecialchars($ticketData['movie_title'] ?? 'Judul Film') ?></h1>
-                        <p class="movie-meta">
-                            <?= htmlspecialchars($ticketData['genre_name'] ?? 'General') ?> &bull; 
-                            <?= (int)($ticketData['movie_duration'] ?? 120) ?> Menit
-                        </p>
-                        <p style="font-size: 12px; color: #4b5563;">
-                            Pemesan: <strong><?= htmlspecialchars($ticketData['customer_name'] ?? 'Customer') ?></strong>
-                        </p>
-                    </div>
+                <div class="info-item">
+                    <span class="info-label">Jam Tayang</span>
+                    <span class="info-value">
+                        <?= !empty($ticketData['show_time']) ? date('H:i', strtotime($ticketData['show_time'])) . ' WIB' : '-' ?>
+                    </span>
                 </div>
-
-                <!-- Grid Rincian Studio, Tanggal, Jam, dan Jumlah Tiket -->
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="info-label">Studio</span>
-                        <span class="info-value"><?= htmlspecialchars($ticketData['studio_name'] ?? 'Studio 1') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Tanggal Tayang</span>
-                        <span class="info-value">
-                            <?= !empty($ticketData['show_date']) ? date('d M Y', strtotime($ticketData['show_date'])) : '-' ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Jam Tayang</span>
-                        <span class="info-value">
-                            <?= !empty($ticketData['show_time']) ? date('H:i', strtotime($ticketData['show_time'])) . ' WIB' : '-' ?>
-                        </span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Jumlah Tiket</span>
-                        <span class="info-value"><?= (int)($ticketData['total_tickets'] ?? count($ticketData['tickets'])) ?> Tiket</span>
-                    </div>
-                    <div class="info-item" style="grid-column: span 2;">
-                        <span class="info-label">Waktu Transaksi</span>
-                        <span class="info-value" style="font-size: 13px;">
-                            <?= !empty($ticketData['order_created_at']) ? date('d/m/Y H:i', strtotime($ticketData['order_created_at'])) : '-' ?>
-                        </span>
-                    </div>
+                <div class="info-item">
+                    <span class="info-label">Jumlah Tiket</span>
+                    <span class="info-value"><?= (int)($ticketData['total_tickets'] ?? 1) ?> Tiket</span>
                 </div>
-
-                <!-- Rincian Tiap Lembar Tiket Berkode Unik (Ticket-01) -->
-                <div class="tickets-list-section">
-                    <div class="tickets-list-title">Rincian Kode Tiket Masuk:</div>
-                    <div class="tickets-chips">
-                        <?php if (!empty($ticketData['tickets'])): ?>
-                            <?php foreach ($ticketData['tickets'] as $index => $t): ?>
-                                <div class="ticket-chip">
-                                    <span>#<?= $index + 1 ?></span>
-                                    <strong><?= htmlspecialchars($t['ticket_code']) ?></strong>
-                                    <span>(<?= htmlspecialchars($t['seat_number'] ?? 'Kursi') ?>)</span>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <!-- Fallback jika belum di-generate ke tabel tickets -->
-                            <div class="ticket-chip">
-                                <strong><?= htmlspecialchars(Ticket::generateTicketCode($ticketData['booking_code'], 1)) ?></strong>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Garis Sobekan Tiket (Perforation Divider) -->
-            <div class="ticket-divider"></div>
-
-            <!-- Sisi Kanan: Stub Kode Booking (Ticket-03) -->
-            <div class="ticket-stub">
-                <div class="booking-code-box">
-                    <div class="booking-code-label">Kode Booking</div>
-                    <div class="booking-code-val"><?= htmlspecialchars($ticketData['booking_code']) ?></div>
-                </div>
-
-                <div class="stub-info-box">
-                    <div class="stub-note">
-                        Tunjukkan kode booking ini kepada petugas di pintu masuk studio.
-                    </div>
-                </div>
-
-                <div class="total-price-box">
-                    <div class="price-label">Total Pembayaran</div>
-                    <div class="price-value">
-                        Rp <?= number_format((float)($ticketData['total_price'] ?? 0), 0, ',', '.') ?>
-                    </div>
+                <div class="info-item" style="grid-column: span 2;">
+                    <span class="info-label">Waktu Transaksi</span>
+                    <span class="info-value" style="font-size: 13px;">
+                        <?= !empty($ticketData['order_created_at']) ? date('d/m/Y H:i', strtotime($ticketData['order_created_at'])) : '-' ?>
+                    </span>
                 </div>
             </div>
 
         </div>
 
-        <div class="ticket-notes no-print">
-            Tunjukkan e-ticket ini (pada layar ponsel atau hasil cetak) kepada petugas bioskop di pintu masuk studio.
+        <!-- Sisi Kanan: Stub Kode Booking -->
+        <div class="ticket-stub">
+            <div>
+                <div class="booking-code-label">Kode Booking</div>
+                <div class="booking-code-box"><?= htmlspecialchars($ticketData['booking_code'] ?? 'BK00000') ?></div>
+            </div>
+
+            <div class="stub-note">
+                Tunjukkan kode booking ini kepada petugas di pintu masuk studio.
+            </div>
+
+            <div class="total-box">
+                <div class="total-label">Total Pembayaran</div>
+                <div class="total-value">
+                    Rp <?= number_format((float)($ticketData['total_price'] ?? 0), 0, ',', '.') ?>
+                </div>
+            </div>
         </div>
+
+    </div>
+
+    <div class="ticket-footer">
+        Tunjukkan e-ticket ini kepada petugas bioskop di pintu masuk studio.
+    </div>
 
 </div>
 
