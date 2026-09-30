@@ -13,71 +13,56 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Hubungkan ke class Ticket backend yang sudah kita buat di folder classes
-require_once __DIR__ . '/classes/Ticket.php';
+// Tangkap parameter dari URL browser (?order_id=... atau ?code=...)
+$orderIdentifier = $_GET['order_id'] ?? $_GET['code'] ?? null;
 
-// Siapkan variabel koneksi database PDO dan penampung pesan error
+// Jika belum ada data dari modul lain atau parameter kosong, buat putih saja
+if (!$orderIdentifier) {
+    exit;
+}
+
 $db = null;
-$dbError = null;
 
-// Cek apakah class Database bikinan teman tim DB-03 sudah ada di folder config
 if (file_exists(__DIR__ . '/config/Database.php')) {
     require_once __DIR__ . '/config/Database.php';
     if (class_exists('Database')) {
-        // Ambil koneksi PDO resmi dari class Database
         $db = (new Database())->getConnection();
     }
 }
 
-// Fallback koneksi: kalau class Database belum selesai dibuat teman, kita sediakan koneksi PDO langsung ke MySQL XAMPP
 if (!$db) {
     try {
         $db = new PDO("mysql:host=localhost;dbname=bioskop;charset=utf8mb4", "root", "", [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // Lempar exception kalau query bermasalah
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC        // Format hasil fetch otomatis jadi array asosiatif
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]);
     } catch (PDOException $e) {
-        $dbError = $e->getMessage();
+        $db = null;
     }
 }
 
-// Tangkap parameter dari URL browser, mendukung dua format: ?order_id=... atau ?code=...
-$orderIdentifier = $_GET['order_id'] ?? $_GET['code'] ?? null;
+if (!$db) {
+    exit;
+}
 
-// Buat objek model Ticket dengan menyuntikkan koneksi database $db
+// Hubungkan ke class Ticket backend
+require_once __DIR__ . '/classes/Ticket.php';
+
 $ticketModel = new Ticket($db);
-$ticketData = null;
-$errorMessage = null;
+$ticketData = $ticketModel->getOrderTicketDetails($orderIdentifier);
 
-// Ambil status autentikasi user dari session (apakah sudah login, rolenya apa, dan siapa ID usernya)
+// Jika data tiket belum ada di database, buat putih saja
+if (!$ticketData) {
+    exit;
+}
+
+// Proteksi keamanan: jika user login sebagai customer, pastikan tiket ini miliknya sendiri
 $isLoggedIn = isset($_SESSION['user_id']);
 $currentUserRole = $_SESSION['role'] ?? 'customer';
 $currentUserId = $_SESSION['user_id'] ?? null;
 
-// KONDISI 1: Kalau pengguna membuka tiket.php tanpa menyertakan ID pesanan atau kode booking di link URL
-if (!$orderIdentifier) {
-    $errorMessage = "Parameter order ID atau kode booking tidak ditemukan. Silakan buka tiket melalui halaman Riwayat Pesanan.";
-} 
-// KONDISI 2: Kalau MySQL di XAMPP belum dinyalakan atau database 'bioskop' belum diimport
-elseif ($dbError) {
-    $errorMessage = "Koneksi database belum tersedia ($dbError). Pastikan MySQL XAMPP aktif dan database 'bioskop' telah diimport.";
-} 
-// KONDISI 3: Semua syarat awal terpenuhi, lakukan penarikan data tiket dari database
-else {
-    // Panggil method backend getOrderTicketDetails() untuk mengambil paket lengkap: film + jam + studio + daftar tiket
-    $ticketData = $ticketModel->getOrderTicketDetails($orderIdentifier);
-
-    // Kalau data tidak ditemukan di database (misal kode booking salah ketik)
-    if (!$ticketData) {
-        $errorMessage = "Pesanan dengan ID / Kode Booking \"$orderIdentifier\" tidak ditemukan.";
-    } else {
-        // Proteksi keamanan: jika user login sebagai customer, pastikan tiket ini miliknya sendiri (bukan milik akun lain)
-        // Catatan: Jika yang login adalah 'admin', maka admin diizinkan melihat tiket siapa saja untuk validasi
-        if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ticketData['user_id'] != $currentUserId) {
-            $errorMessage = "Akses ditolak: Anda tidak memiliki hak untuk melihat e-ticket akun lain.";
-            $ticketData = null;
-        }
-    }
+if ($isLoggedIn && $ticketData['user_id'] && $currentUserRole !== 'admin' && $ticketData['user_id'] != $currentUserId) {
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -172,30 +157,6 @@ else {
             color: #ffffff;
         }
 
-        /* Alert Box */
-        .alert {
-            padding: 24px;
-            border-radius: 12px;
-            background: #232530;
-            border-left: 4px solid var(--accent);
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .alert-error {
-            border-left-color: var(--primary);
-        }
-
-        .alert h3 {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-
-        .alert p {
-            color: #9ca3af;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
 
         /* E-Ticket Main Card */
         .ticket-wrapper {
@@ -428,31 +389,24 @@ else {
             color: var(--primary);
             letter-spacing: 2px;
             background: #fef2f2;
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 8px;
             border: 1px dashed #fca5a5;
             display: inline-block;
         }
 
-        .qr-section {
+        .stub-info-box {
+            margin: 20px 0;
+            padding: 14px;
             background: #ffffff;
-            padding: 12px;
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            margin: 16px 0;
         }
 
-        .qr-image {
-            width: 130px;
-            height: 130px;
-            display: block;
-        }
-
-        .qr-caption {
-            font-size: 11px;
+        .stub-note {
+            font-size: 12px;
             color: var(--text-muted);
-            margin-top: 6px;
+            line-height: 1.4;
         }
 
         .total-price-box {
@@ -485,54 +439,11 @@ else {
 
         /* ====================================================
            PRINT STYLES (@media print)
-           Menjamin tiket tercetak rapi, bersih, tanpa navbar/tombol
+           Jika dicetak, hanya menampilkan blank putih saja
            ==================================================== */
         @media print {
             body {
-                background-color: #ffffff !important;
-                color: #000000 !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            .no-print,
-            .action-bar,
-            .ticket-notes,
-            header,
-            footer,
-            nav {
                 display: none !important;
-            }
-
-            .container {
-                max-width: 100% !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            .ticket-wrapper {
-                box-shadow: none !important;
-                border: 2px solid #333333 !important;
-                border-radius: 12px !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
-
-            .ticket-divider::before,
-            .ticket-divider::after {
-                background-color: #ffffff !important;
-                border: 2px solid #333333 !important;
-            }
-
-            .booking-code-val {
-                border: 1px solid #333333 !important;
-                color: #000000 !important;
-            }
-
-            .qr-image {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
             }
         }
 
@@ -584,33 +495,18 @@ else {
                 Beranda
             </a>
         </div>
-        <?php if ($ticketData): ?>
-            <button onclick="window.print()" class="btn btn-print" id="btnPrint">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Cetak E-Ticket
-            </button>
-        <?php endif; ?>
+        <button onclick="window.print()" class="btn btn-print" id="btnPrint">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Cetak E-Ticket
+        </button>
     </div>
 
-    <?php if ($errorMessage): ?>
-        <!-- Kotak Error / Pemberitahuan jika tiket tidak ditemukan -->
-        <div class="alert alert-error">
-            <h3>Informasi E-Ticket</h3>
-            <p><?= htmlspecialchars($errorMessage) ?></p>
-            <div style="display: flex; justify-content: center; gap: 10px;">
-                <a href="history.php" class="btn btn-secondary">Lihat Daftar Riwayat</a>
-                <a href="index.php" class="btn btn-print">Pesan Tiket Film</a>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($ticketData): ?>
-        <!-- Kartu E-Ticket Siap Cetak (Ticket-02) -->
-        <div class="ticket-wrapper" id="eTicketCard">
+    <!-- Kartu E-Ticket Siap Cetak (Ticket-02) -->
+    <div class="ticket-wrapper" id="eTicketCard">
             
             <!-- Sisi Kiri: Detail Film, Jadwal, & Lembar Tiket -->
             <div class="ticket-main">
@@ -697,20 +593,17 @@ else {
             <!-- Garis Sobekan Tiket (Perforation Divider) -->
             <div class="ticket-divider"></div>
 
-            <!-- Sisi Kanan: Stub Kode Booking & QR Code (Ticket-03) -->
+            <!-- Sisi Kanan: Stub Kode Booking (Ticket-03) -->
             <div class="ticket-stub">
                 <div class="booking-code-box">
                     <div class="booking-code-label">Kode Booking</div>
                     <div class="booking-code-val"><?= htmlspecialchars($ticketData['booking_code']) ?></div>
                 </div>
 
-                <!-- QR Code Generator Otomatis (Ticket-03) -->
-                <div class="qr-section">
-                    <img src="<?= Ticket::getQrCodeUrl($ticketData['booking_code']) ?>" 
-                         alt="QR Code Tiket" 
-                         class="qr-image"
-                         title="Scan di pintu masuk bioskop">
-                    <div class="qr-caption">Scan di Pintu Masuk</div>
+                <div class="stub-info-box">
+                    <div class="stub-note">
+                        Tunjukkan kode booking ini kepada petugas di pintu masuk studio.
+                    </div>
                 </div>
 
                 <div class="total-price-box">
@@ -726,7 +619,6 @@ else {
         <div class="ticket-notes no-print">
             Tunjukkan e-ticket ini (pada layar ponsel atau hasil cetak) kepada petugas bioskop di pintu masuk studio.
         </div>
-    <?php endif; ?>
 
 </div>
 
