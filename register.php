@@ -133,8 +133,8 @@ unset($_SESSION['error']);
 
         <form action="register_post.php" method="POST">
             <div class="form-group">
-                <label for="name">Nama Lengkap</label>
-                <input type="text" id="name" name="name" required placeholder="Masukkan nama Anda">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required placeholder="Masukkan username Anda">
             </div>
             <div class="form-group">
                 <label for="email">Email</label>
