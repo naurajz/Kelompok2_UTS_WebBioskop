@@ -13,23 +13,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// ==============================================================================
-// PROTEKSI HALAMAN: WAJIB LOGIN (Jobdesk Trx-02)
-// ==============================================================================
-// Jika pengguna belum login, arahkan langsung ke halaman login.php
+// Proteksi: wajib login (Trx-02)
 if (!isset($_SESSION['user_id'])) {
-    $redirectUrl = urlencode($_SERVER['REQUEST_URI'] ?? 'checkout.php');
-    header("Location: login.php?msg=login_required&redirect={$redirectUrl}");
+    header("Location: login.php");
     exit;
 }
 
-// Hubungkan ke class Order dan Ticket di folder classes
-require_once __DIR__ . '/classes/Order.php';
-require_once __DIR__ . '/classes/Ticket.php';
+// Ambil ID jadwal tayang (showtime_id) dari parameter URL atau POST
+$showtimeId = (int)($_GET['showtime_id'] ?? $_POST['showtime_id'] ?? 0);
+
+// Jika parameter showtime_id belum ada dari modul film, buat putih saja
+if ($showtimeId <= 0) {
+    exit;
+}
 
 // Inisialisasi koneksi database PDO
 $db = null;
-$dbError = null;
 
 if (file_exists(__DIR__ . '/config/Database.php')) {
     require_once __DIR__ . '/config/Database.php';
@@ -38,7 +37,6 @@ if (file_exists(__DIR__ . '/config/Database.php')) {
     }
 }
 
-// Fallback koneksi PDO jika class Database belum tersedia
 if (!$db) {
     try {
         $db = new PDO("mysql:host=localhost;dbname=bioskop;charset=utf8mb4", "root", "", [
@@ -46,12 +44,17 @@ if (!$db) {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]);
     } catch (PDOException $e) {
-        $dbError = $e->getMessage();
+        $db = null;
     }
 }
 
-// Ambil ID jadwal tayang (showtime_id) dari query string URL atau POST
-$showtimeId = (int)($_GET['showtime_id'] ?? $_POST['showtime_id'] ?? 1);
+if (!$db) {
+    exit;
+}
+
+// Hubungkan ke class Order dan Ticket di folder classes
+require_once __DIR__ . '/classes/Order.php';
+require_once __DIR__ . '/classes/Ticket.php';
 
 // Ambil data pemesan otomatis dari sesi yang aktif (Trx-02)
 $currentUserId   = $_SESSION['user_id'];
@@ -71,52 +74,41 @@ if (empty($currentUserEmail) && $db) {
             }
         }
     } catch (Exception $e) {
-        // Biarkan default jika gagal
     }
 }
 
 $orderModel = new Order($db);
-$showtime = null;
-$quotaInfo = null;
-$errorMessage = null;
 
 // Ambil rincian film dan jadwal tayang dari database
-if ($db) {
-    try {
-        $sqlShowtime = "SELECT 
-                            st.id AS showtime_id,
-                            st.price,
-                            st.show_date,
-                            st.show_time,
-                            m.id AS movie_id,
-                            m.title AS movie_title,
-                            m.poster AS movie_poster,
-                            m.duration AS movie_duration,
-                            g.name AS genre_name,
-                            s.name AS studio_name,
-                            COALESCE(s.capacity, 50) AS studio_capacity
-                        FROM showtimes st
-                        LEFT JOIN movies m ON st.movie_id = m.id
-                        LEFT JOIN genres g ON m.genre_id = g.id
-                        LEFT JOIN studios s ON st.studio_id = s.id
-                        WHERE st.id = :showtime_id
-                        LIMIT 1";
-        $stmtST = $db->prepare($sqlShowtime);
-        $stmtST->execute([':showtime_id' => $showtimeId]);
-        $showtime = $stmtST->fetch();
+$sqlShowtime = "SELECT 
+                    st.id AS showtime_id,
+                    st.price,
+                    st.show_date,
+                    st.show_time,
+                    m.id AS movie_id,
+                    m.title AS movie_title,
+                    m.poster AS movie_poster,
+                    m.duration AS movie_duration,
+                    g.name AS genre_name,
+                    s.name AS studio_name,
+                    COALESCE(s.capacity, 50) AS studio_capacity
+                FROM showtimes st
+                LEFT JOIN movies m ON st.movie_id = m.id
+                LEFT JOIN genres g ON m.genre_id = g.id
+                LEFT JOIN studios s ON st.studio_id = s.id
+                WHERE st.id = :showtime_id
+                LIMIT 1";
+$stmtST = $db->prepare($sqlShowtime);
+$stmtST->execute([':showtime_id' => $showtimeId]);
+$showtime = $stmtST->fetch();
 
-        if ($showtime) {
-            // Cek kuota kursi yang masih tersisa
-            $quotaInfo = $orderModel->checkQuota($showtimeId, 1);
-        } else {
-            $errorMessage = "Jadwal tayang tidak ditemukan. Silakan pilih jadwal dari halaman film.";
-        }
-    } catch (Exception $e) {
-        $errorMessage = "Terjadi kesalahan saat memuat jadwal: " . $e->getMessage();
-    }
-} else {
-    $errorMessage = "Koneksi database belum siap ($dbError). Pastikan MySQL aktif.";
+// Jika data jadwal dari modul lain belum ada di database, buat putih saja
+if (!$showtime) {
+    exit;
 }
+
+// Cek kuota kursi yang masih tersisa
+$quotaInfo = $orderModel->checkQuota($showtimeId, 1);
 
 // ==============================================================================
 // PENANGANAN FORM SUBMIT (PROSES CHECKOUT)
@@ -124,25 +116,17 @@ if ($db) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_checkout'])) {
     $quantity = (int)($_POST['quantity'] ?? 1);
 
-    // 1. Validasi jumlah tiket: hanya boleh antara 1 sampai 6 lembar (Jobdesk Trx-02)
-    if ($quantity < 1 || $quantity > 6) {
-        $errorMessage = "Jumlah tiket yang dapat dibeli adalah minimal 1 dan maksimal 6 tiket.";
-    } elseif (!$showtime) {
-        $errorMessage = "Data jadwal tayang tidak valid.";
-    } else {
+    // Validasi jumlah tiket: hanya boleh 1 sampai 6 lembar (Jobdesk Trx-02)
+    if ($quantity >= 1 && $quantity <= 6) {
         try {
-            // 2. Jalankan transaksi database terpadu (Jobdesk Trx-01)
+            // Jalankan transaksi database atomik (Jobdesk Trx-01)
             $result = $orderModel->createOrderWithTickets($currentUserId, $showtimeId, $quantity);
 
             if ($result && isset($result['order_id'])) {
-                // 3. Jika berhasil, alihkan pengguna ke halaman Konfirmasi Pesanan (Trx-03)
                 header("Location: confirm.php?order_id=" . $result['order_id']);
                 exit;
-            } else {
-                $errorMessage = "Gagal memproses pesanan. Silakan coba kembali.";
             }
         } catch (Exception $e) {
-            $errorMessage = $e->getMessage();
         }
     }
 }
@@ -482,12 +466,6 @@ $maxSelectable = $quotaInfo ? min(6, $quotaInfo['remaining']) : 6;
             &larr; Kembali ke Beranda
         </a>
     </div>
-
-    <?php if ($errorMessage): ?>
-        <div class="alert">
-            <?= htmlspecialchars($errorMessage) ?>
-        </div>
-    <?php endif; ?>
 
     <div class="checkout-grid">
         
