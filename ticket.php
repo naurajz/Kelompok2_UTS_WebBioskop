@@ -457,31 +457,24 @@ if (!$ticketData && (isset($_GET['preview']) || empty($db) || !$orderIdentifier)
             color: var(--primary);
             letter-spacing: 2px;
             background: #fef2f2;
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 8px;
             border: 1px dashed #fca5a5;
             display: inline-block;
         }
 
-        .qr-section {
+        .stub-info-box {
+            margin: 20px 0;
+            padding: 14px;
             background: #ffffff;
-            padding: 12px;
-            border-radius: 12px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-            margin: 16px 0;
         }
 
-        .qr-image {
-            width: 130px;
-            height: 130px;
-            display: block;
-        }
-
-        .qr-caption {
-            font-size: 11px;
+        .stub-note {
+            font-size: 12px;
             color: var(--text-muted);
-            margin-top: 6px;
+            line-height: 1.4;
         }
 
         .total-price-box {
@@ -557,11 +550,6 @@ if (!$ticketData && (isset($_GET['preview']) || empty($db) || !$orderIdentifier)
             .booking-code-val {
                 border: 1px solid #333333 !important;
                 color: #000000 !important;
-            }
-
-            .qr-image {
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
             }
         }
 
@@ -726,20 +714,17 @@ if (!$ticketData && (isset($_GET['preview']) || empty($db) || !$orderIdentifier)
             <!-- Garis Sobekan Tiket (Perforation Divider) -->
             <div class="ticket-divider"></div>
 
-            <!-- Sisi Kanan: Stub Kode Booking & QR Code (Ticket-03) -->
+            <!-- Sisi Kanan: Stub Kode Booking (Ticket-03) -->
             <div class="ticket-stub">
                 <div class="booking-code-box">
                     <div class="booking-code-label">Kode Booking</div>
                     <div class="booking-code-val"><?= htmlspecialchars($ticketData['booking_code']) ?></div>
                 </div>
 
-                <!-- QR Code Generator Otomatis (Ticket-03) -->
-                <div class="qr-section">
-                    <img src="<?= Ticket::getQrCodeUrl($ticketData['booking_code']) ?>" 
-                         alt="QR Code Tiket" 
-                         class="qr-image"
-                         title="Scan di pintu masuk bioskop">
-                    <div class="qr-caption">Scan di Pintu Masuk</div>
+                <div class="stub-info-box">
+                    <div class="stub-note">
+                        Tunjukkan kode booking ini kepada petugas di pintu masuk studio.
+                    </div>
                 </div>
 
                 <div class="total-price-box">

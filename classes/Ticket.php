@@ -69,7 +69,7 @@ if (!class_exists('BaseModel')) {
 
 /**
  * Class Ticket
- * Mengelola data tiket bioskop, generate kode booking pesanan, kode tiket individual, dan QR Code.
+ * Mengelola data tiket bioskop, generate kode booking pesanan, dan kode tiket individual.
  */
 class Ticket extends BaseModel {
     // Nama tabel database yang dihubungkan ke class ini
@@ -151,7 +151,7 @@ class Ticket extends BaseModel {
     }
 
     // ==============================================================================
-    // JOBDESK TICKET-03: KODE BOOKING & QR HELPER
+    // JOBDESK TICKET-03: GENERATOR KODE BOOKING UNIK
     // ==============================================================================
 
     /**
@@ -182,19 +182,6 @@ class Ticket extends BaseModel {
         // strtoupper() memastikan kode booking selalu berhuruf besar
         // Lalu disambungkan dengan tanda strip '-' dan nomor tiketnya
         return strtoupper(trim($bookingCode)) . '-' . $seatOrIndex;
-    }
-
-    /**
-     * Menghasilkan link (URL) gambar QR Code asli buat karcis bioskop (Ticket-03 QR Opsional)
-     * Kita memanfaatkan API publik QRServer, jadi nggak perlu ribet install library composer tambahan
-     * 
-     * @param string $data Teks atau kode booking yang mau diubah jadi gambar QR
-     * @param string $size Ukuran gambar QR Code (default: 160x160 pixel)
-     * @return string URL gambar QR Code siap pasang di tag <img>
-     */
-    public static function getQrCodeUrl($data, $size = '160x160') {
-        // urlencode() menjaga agar karakter di dalam kode tetap aman saat dikirim lewat URL web
-        return 'https://api.qrserver.com/v1/create-qr-code/?size=' . $size . '&data=' . urlencode($data);
     }
 
     // ==============================================================================
