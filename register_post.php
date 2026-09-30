@@ -1,14 +1,14 @@
 <?php
 require_once "bootstrap.php";
 
-$name = trim($_POST['name'] ?? '');
+$username = trim($_POST['username'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $password = $_POST['password'] ?? '';
 $confirm = $_POST['confirm_password'] ?? '';
 $role = $_POST['role'] ?? 'customer'; // Default ke customer
 
 // ===== VALIDASI INPUT =====
-if (empty($name) || empty($email) || empty($password) || empty($confirm) || empty($role)) {
+if (empty($username) || empty($email) || empty($password) || empty($confirm) || empty($role)) {
     $_SESSION['error'] = "Semua kolom wajib diisi!";
 } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $_SESSION['error'] = "Format email tidak valid!";
@@ -23,7 +23,7 @@ if (empty($name) || empty($email) || empty($password) || empty($confirm) || empt
         $db = new DBConnection();
 
         // ===== CEK EMAIL SUDAH TERDAFTAR ATAU BELUM =====
-        $cek = $db->send_query("SELECT id FROM users WHERE email = $1", [$email]);
+        $cek = $db->send_query("SELECT user_id FROM users WHERE email = $1", [$email]);
 
         if (!$cek['success']) {
             $_SESSION['error'] = "Terjadi kesalahan pada database. Coba lagi nanti.";
@@ -34,12 +34,12 @@ if (empty($name) || empty($email) || empty($password) || empty($confirm) || empt
             $hash = password_hash($password, PASSWORD_DEFAULT);
 
             $simpan = $db->send_query(
-                "INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)",
-                [$name, $email, $hash, $role]
+                "INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)",
+                [$username, $email, $hash, $role]
             );
 
             if ($simpan['success']) {
-                // Berhasil daftar, kasih pesan sukses dan arahkan ke login (opsional bisa pakai flash message sukses)
+                // Berhasil daftar, arahkan ke login
                 header("Location: login.php");
                 exit;
             } else {
