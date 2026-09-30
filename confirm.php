@@ -13,13 +13,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Hubungkan ke class Order dan Ticket di folder classes
-require_once __DIR__ . '/classes/Order.php';
-require_once __DIR__ . '/classes/Ticket.php';
+// Tangkap parameter order_id dari query string URL
+$orderId = (int)($_GET['order_id'] ?? 0);
+
+// Jika parameter orderId belum ada dari proses sebelumnya, buat putih saja
+if ($orderId <= 0) {
+    exit;
+}
 
 // Inisialisasi koneksi database PDO
 $db = null;
-$dbError = null;
 
 if (file_exists(__DIR__ . '/config/Database.php')) {
     require_once __DIR__ . '/config/Database.php';
@@ -28,7 +31,6 @@ if (file_exists(__DIR__ . '/config/Database.php')) {
     }
 }
 
-// Fallback koneksi PDO jika class Database belum tersedia
 if (!$db) {
     try {
         $db = new PDO("mysql:host=localhost;dbname=bioskop;charset=utf8mb4", "root", "", [
@@ -36,34 +38,32 @@ if (!$db) {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]);
     } catch (PDOException $e) {
-        $dbError = $e->getMessage();
+        $db = null;
     }
 }
 
-// Tangkap parameter order_id dari query string URL
-$orderId = (int)($_GET['order_id'] ?? 0);
+if (!$db) {
+    exit;
+}
+
+// Hubungkan ke class Order dan Ticket di folder classes
+require_once __DIR__ . '/classes/Order.php';
+require_once __DIR__ . '/classes/Ticket.php';
+
 $orderModel = new Order($db);
-$order = null;
-$errorMessage = null;
+$order = $orderModel->getOrderDetail($orderId);
 
-// Ambil data pesanan jika database dan ID tersedia
-if ($db && $orderId > 0) {
-    $order = $orderModel->getOrderDetail($orderId);
+// Jika data pesanan belum ada di database, buat putih saja
+if (!$order) {
+    exit;
+}
 
-    if (!$order) {
-        $errorMessage = "Pesanan dengan ID #{$orderId} tidak ditemukan.";
-    } else {
-        // Validasi keamanan: pastikan pesanan ini milik user yang sedang login atau role admin
-        $currentUserId = $_SESSION['user_id'] ?? null;
-        $currentUserRole = $_SESSION['role'] ?? 'customer';
+// Validasi keamanan: pastikan pesanan ini milik user yang sedang login atau role admin
+$currentUserId = $_SESSION['user_id'] ?? null;
+$currentUserRole = $_SESSION['role'] ?? 'customer';
 
-        if ($currentUserId && $order['user_id'] && $currentUserRole !== 'admin' && $order['user_id'] != $currentUserId) {
-            $errorMessage = "Akses ditolak: Anda tidak memiliki akses ke rincian pesanan akun lain.";
-            $order = null;
-        }
-    }
-} else {
-    $errorMessage = "Nomor pesanan tidak valid atau koneksi database belum tersedia.";
+if ($currentUserId && $order['user_id'] && $currentUserRole !== 'admin' && $order['user_id'] != $currentUserId) {
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -266,17 +266,6 @@ if ($db && $orderId > 0) {
 
         .btn-secondary:hover {
             background-color: #373949;
-            color: #ffffff;
-        }
-
-        .alert-error {
-            background: rgba(239, 68, 68, 0.15);
-            border-left: 4px solid var(--primary);
-            color: #fca5a5;
-            padding: 18px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-size: 14px;
         }
     </style>
 </head>
@@ -286,13 +275,6 @@ if ($db && $orderId > 0) {
 
     <div class="confirm-card">
         
-        <?php if ($errorMessage): ?>
-            <div class="alert-error">
-                <?= htmlspecialchars($errorMessage) ?>
-            </div>
-            <a href="index.php" class="btn btn-secondary" style="width: 100%;">Kembali ke Beranda</a>
-        <?php elseif ($order): ?>
-            
             <!-- Ikon Sukses -->
             <div class="success-icon-box">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -364,8 +346,6 @@ if ($db && $orderId > 0) {
                     </a>
                 </div>
             </div>
-
-        <?php endif; ?>
 
     </div>
 
