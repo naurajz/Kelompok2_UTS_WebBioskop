@@ -7,15 +7,6 @@
  * Deadline : 2 Oktober 2026
  */
 
-<?php
-/**
- * File     : classes/Movie.php
- * Card     : Movie-01 Film Backend
- * Tugas    : Class Movie dengan constructor, getter, setter, dan CRUD
- * PIC      : Zayyan Ahmad Dzaki W
- * Deadline : 2 Oktober 2026
- */
-
 require_once __DIR__ . '/BaseModel.php';
 require_once __DIR__ . '/../config/Database.php';
 
