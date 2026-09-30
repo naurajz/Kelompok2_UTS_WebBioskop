@@ -4,7 +4,7 @@
  * File     : classes/User.php
  * Card     : Auth-01 Admin Login
  * Tugas    : Class User extends BaseModel. Isi: constructor, getter/setter, login($email, $password), register(). Role: admin / customer.
- * PIC      : (isi nama)
+ * PIC      : Syahrisham Rafif Thufail
  * Deadline : 1 Oktober 2026
  */
 
