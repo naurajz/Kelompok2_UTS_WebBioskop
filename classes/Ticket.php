@@ -11,62 +11,6 @@
 // Panggil file class induk (BaseModel.php) karena class Ticket adalah turunan (anak) dari BaseModel
 require_once __DIR__ . '/BaseModel.php';
 
-// Ini ban serep sementara: kalau teman kelompok yang ngerjain Core-02 belum selesai bikin BaseModel,
-// kita sediakan kerangka BaseModel darurat di sini biar kode Ticket kita nggak error pas dites.
-// Begitu BaseModel asli dari tim Core-02 sudah ada di repo, blok ini otomatis dilewati (nggak bentrok).
-if (!class_exists('BaseModel')) {
-    abstract class BaseModel {
-        // Properti koneksi database PDO
-        protected $db;
-        // Nama tabel di database
-        protected $table;
-        // Primary key (ID) dari data
-        protected $id;
-
-        // Constructor untuk nerima objek koneksi database PDO
-        public function __construct($db = null) {
-            $this->db = $db;
-        }
-
-        // Mengambil nilai ID
-        public function getId() {
-            return $this->id;
-        }
-
-        // Mengisi nilai ID
-        public function setId($id) {
-            $this->id = $id;
-        }
-
-        // Mengambil semua baris data dari tabel yang bersangkutan
-        public function getAll() {
-            if (!$this->db || !$this->table) return [];
-            $stmt = $this->db->prepare("SELECT * FROM {$this->table} ORDER BY id DESC");
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        // Mengambil satu baris data berdasarkan nilai ID-nya
-        public function getById($id) {
-            if (!$this->db || !$this->table) return null;
-            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id LIMIT 1");
-            $stmt->execute([':id' => $id]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        }
-
-        // Menghapus data dari tabel berdasarkan ID
-        public function delete($id = null) {
-            $targetId = $id ?? $this->id;
-            if (!$this->db || !$this->table || !$targetId) return false;
-            $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
-            return $stmt->execute([':id' => $targetId]);
-        }
-
-        // Method abstrak yang wajib dibuat isi logikanya oleh class anak (wajib punya fungsi save)
-        abstract public function save();
-    }
-}
-
 /**
  * Class Ticket
  * Mengelola data tiket bioskop, generate kode booking pesanan, dan kode tiket individual.

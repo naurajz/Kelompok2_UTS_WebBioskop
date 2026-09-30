@@ -12,50 +12,6 @@
 require_once __DIR__ . '/BaseModel.php';
 require_once __DIR__ . '/Ticket.php';
 
-// Ini ban serep sementara: jika BaseModel belum dibuat oleh tim Core-02, kita sediakan kerangka darurat
-if (!class_exists('BaseModel')) {
-    abstract class BaseModel {
-        protected $db;
-        protected $table;
-        protected $id;
-
-        public function __construct($db = null) {
-            $this->db = $db;
-        }
-
-        public function getId() {
-            return $this->id;
-        }
-
-        public function setId($id) {
-            $this->id = $id;
-        }
-
-        public function getAll() {
-            if (!$this->db || !$this->table) return [];
-            $stmt = $this->db->prepare("SELECT * FROM {$this->table} ORDER BY id DESC");
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        public function getById($id) {
-            if (!$this->db || !$this->table) return null;
-            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = :id LIMIT 1");
-            $stmt->execute([':id' => $id]);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        }
-
-        public function delete($id = null) {
-            $targetId = $id ?? $this->id;
-            if (!$this->db || !$this->table || !$targetId) return false;
-            $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE id = :id");
-            return $stmt->execute([':id' => $targetId]);
-        }
-
-        abstract public function save();
-    }
-}
-
 /**
  * Class Order
  * Mengelola transaksi pesanan tiket, pengecekan sisa kuota studio, kalkulasi total harga,
