@@ -8,4 +8,5 @@
  */
 
 // TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
-// tessssssssssssssss
+
+// kentut
