@@ -79,6 +79,35 @@ else {
         }
     }
 }
+
+// Fallback data demo untuk keperluan pratinjau antarmuka (UI Preview) jika dibuka dengan ?preview=1 atau order kosong
+if (!$ticketData && (isset($_GET['preview']) || empty($db) || !$orderIdentifier)) {
+    $ticketData = [
+        'order_id'         => 101,
+        'user_id'          => 1,
+        'booking_code'     => 'BK7F3A2',
+        'total_tickets'    => 3,
+        'total_price'      => 150000,
+        'order_status'     => 'CONFIRMED',
+        'order_created_at' => date('Y-m-d H:i:s'),
+        'movie_id'         => 1,
+        'movie_title'      => 'Avengers: Endgame',
+        'movie_poster'     => 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&q=80',
+        'movie_duration'   => 181,
+        'genre_name'       => 'Action, Sci-Fi',
+        'studio_name'      => 'Studio 1 Premiere',
+        'show_date'        => date('Y-m-d', strtotime('+1 day')),
+        'show_time'        => '19:00:00',
+        'customer_name'    => 'Davientyo Arifius Putra',
+        'customer_email'   => 'davientyo@gmail.com',
+        'tickets'          => [
+            ['ticket_code' => 'BK7F3A2-1', 'seat_number' => 'Kursi A1'],
+            ['ticket_code' => 'BK7F3A2-2', 'seat_number' => 'Kursi A2'],
+            ['ticket_code' => 'BK7F3A2-3', 'seat_number' => 'Kursi A3']
+        ]
+    ];
+    $errorMessage = null;
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">

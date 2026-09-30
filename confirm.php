@@ -65,6 +65,24 @@ if ($db && $orderId > 0) {
 } else {
     $errorMessage = "Nomor pesanan tidak valid atau koneksi database belum tersedia.";
 }
+
+// Fallback data demo untuk keperluan pratinjau antarmuka (UI Preview) jika dibuka dengan ?preview=1
+if (!$order && (isset($_GET['preview']) || empty($db) || $orderId === 0)) {
+    $order = [
+        'id'            => 101,
+        'user_id'       => 1,
+        'booking_code'  => 'BK7F3A2',
+        'total_tickets' => 3,
+        'total_price'   => 150000,
+        'status'        => 'CONFIRMED',
+        'movie_title'   => 'Avengers: Endgame',
+        'studio_name'   => 'Studio 1 Premiere',
+        'show_date'     => date('Y-m-d', strtotime('+1 day')),
+        'show_time'     => '19:00:00',
+        'created_at'    => date('Y-m-d H:i:s')
+    ];
+    $errorMessage = null;
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">

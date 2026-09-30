@@ -17,10 +17,18 @@ if (session_status() === PHP_SESSION_NONE) {
 // PROTEKSI HALAMAN: WAJIB LOGIN (Jobdesk Trx-02)
 // ==============================================================================
 // Jika pengguna belum login, arahkan langsung ke halaman login.php
+// (Dikecualikan jika membuka dengan parameter ?preview=1 untuk kemudahan pratinjau UI)
 if (!isset($_SESSION['user_id'])) {
-    $redirectUrl = urlencode($_SERVER['REQUEST_URI'] ?? 'checkout.php');
-    header("Location: login.php?msg=login_required&redirect={$redirectUrl}");
-    exit;
+    if (isset($_GET['preview'])) {
+        $_SESSION['user_id'] = 1;
+        $_SESSION['name'] = 'Davientyo Arifius Putra';
+        $_SESSION['email'] = 'davientyo@gmail.com';
+        $_SESSION['role'] = 'customer';
+    } else {
+        $redirectUrl = urlencode($_SERVER['REQUEST_URI'] ?? 'checkout.php');
+        header("Location: login.php?msg=login_required&redirect={$redirectUrl}");
+        exit;
+    }
 }
 
 // Hubungkan ke class Order dan Ticket di folder classes
@@ -116,6 +124,32 @@ if ($db) {
     }
 } else {
     $errorMessage = "Koneksi database belum siap ($dbError). Pastikan MySQL aktif.";
+}
+
+// Fallback data demo untuk keperluan pratinjau antarmuka (UI Preview) jika database belum diisi data dummy
+if (!$showtime && (isset($_GET['preview']) || empty($db))) {
+    $showtime = [
+        'showtime_id'     => $showtimeId ?: 1,
+        'price'           => 50000,
+        'show_date'       => date('Y-m-d', strtotime('+1 day')),
+        'show_time'       => '19:00:00',
+        'movie_id'        => 1,
+        'movie_title'     => 'Avengers: Endgame',
+        'movie_poster'    => 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&q=80',
+        'movie_duration'  => 181,
+        'genre_name'      => 'Action, Sci-Fi',
+        'studio_name'     => 'Studio 1 Premiere',
+        'studio_capacity' => 50
+    ];
+    $quotaInfo = [
+        'available' => true,
+        'remaining' => 45,
+        'capacity'  => 50,
+        'sold'      => 5,
+        'price'     => 50000,
+        'message'   => 'Kuota tersedia.'
+    ];
+    $errorMessage = null;
 }
 
 // ==============================================================================
