@@ -1,0 +1,12 @@
+# Config lokal / rahasia
+config/config.local.php
+
+# Upload poster (hanya simpan folder-nya)
+assets/img/posters/*
+!assets/img/posters/.gitkeep
+
+# File sistem / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
