@@ -3,7 +3,8 @@
  * File     : ticket.php
  * Card     : Ticket-02 Ticket UI
  * Tugas    : E-ticket: film, jam, studio, jumlah tiket, kode booking. Bisa dicetak.
- * PIC      : rasendryadacosta
+ * PIC      : Shafrie Alvito Wimala Rasendrya
+ * NIM      : 434251142
  * Deadline : 3 Oktober 2026
  */
 
