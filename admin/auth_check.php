@@ -4,6 +4,7 @@
  * File     : admin/auth_check.php
  * Card     : Auth-02 Logout & Proteksi Halaman
  * Tugas    : Cek session + role admin. Di-include di awal semua halaman admin.
+ * PIC      : Syahrisham Rafif Thufail
  * Deadline : 1 Oktober 2026
  */
 
