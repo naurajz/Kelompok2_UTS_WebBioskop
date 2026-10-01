@@ -8,51 +8,76 @@
  */
 
 require_once __DIR__ . '/BaseModel.php';
-require_once __DIR__ . '/../config/Database.php';
 
 class Movie extends BaseModel
 {
-    // Data film sesuai dengan database
+    // Property sesuai kolom tabel movies
     private $movie_id;
-    private $genre_id;
     private $title;
     private $description;
     private $duration;
     private $release_date;
     private $poster;
+    private $genre_id;
+
 
     // =========================
     // CONSTRUCTOR
     // =========================
+
+    /**
+     * Contoh sesuai PPL:
+     * $movie = new Movie(1, 'Avengers', 150);
+     */
     public function __construct(
-        $genre_id,
-        $title,
-        $duration,
-        $description = '',
+        $genre_id = null,
+        $title = null,
+        $duration = null,
+        $description = null,
         $release_date = null,
         $poster = null,
         $movie_id = null
     ) {
-        $this->movie_id = $movie_id;
-        $this->setGenreId($genre_id);
-        $this->setTitle($title);
-        $this->setDuration($duration);
-        $this->setDescription($description);
-        $this->setReleaseDate($release_date);
-        $this->setPoster($poster);
+        // Nama tabel dan primary key
+        parent::__construct('movies', 'movie_id');
+
+        if ($movie_id !== null) {
+            $this->setMovieId($movie_id);
+        }
+
+        if ($genre_id !== null) {
+            $this->setGenreId($genre_id);
+        }
+
+        if ($title !== null) {
+            $this->setTitle($title);
+        }
+
+        if ($duration !== null) {
+            $this->setDuration($duration);
+        }
+
+        if ($description !== null) {
+            $this->setDescription($description);
+        }
+
+        if ($release_date !== null && $release_date !== '') {
+            $this->setReleaseDate($release_date);
+        }
+
+        if ($poster !== null) {
+            $this->setPoster($poster);
+        }
     }
+
 
     // =========================
     // GETTER
     // =========================
+
     public function getMovieId()
     {
         return $this->movie_id;
-    }
-
-    public function getGenreId()
-    {
-        return $this->genre_id;
     }
 
     public function getTitle()
@@ -80,172 +105,160 @@ class Movie extends BaseModel
         return $this->poster;
     }
 
+    public function getGenreId()
+    {
+        return $this->genre_id;
+    }
+
+
     // =========================
     // SETTER + VALIDASI
     // =========================
-    public function setGenreId($genre_id)
+
+    public function setMovieId($movie_id)
     {
-        if (!is_numeric($genre_id) || $genre_id <= 0) {
-            throw new InvalidArgumentException('Genre film harus dipilih.');
+        if (!is_numeric($movie_id) || $movie_id <= 0) {
+            throw new InvalidArgumentException(
+                'Movie ID harus berupa angka lebih dari 0.'
+            );
         }
-        $this->genre_id = (int) $genre_id;
+
+        $this->movie_id = (int) $movie_id;
     }
+
 
     public function setTitle($title)
     {
         $title = trim($title);
-        if ($title == '') {
-            throw new InvalidArgumentException('Judul film tidak boleh kosong.');
+
+        if ($title === '') {
+            throw new InvalidArgumentException(
+                'Judul film tidak boleh kosong.'
+            );
         }
+
+        if (strlen($title) > 150) {
+            throw new InvalidArgumentException(
+                'Judul film maksimal 150 karakter.'
+            );
+        }
+
         $this->title = $title;
     }
+
 
     public function setDescription($description)
     {
         $this->description = trim($description);
     }
 
+
     public function setDuration($duration)
     {
         if (!is_numeric($duration) || $duration <= 0) {
-            throw new InvalidArgumentException('Durasi film harus lebih dari 0 menit.');
+            throw new InvalidArgumentException(
+                'Durasi film harus lebih dari 0 menit.'
+            );
         }
+
         $this->duration = (int) $duration;
     }
 
+
     public function setReleaseDate($release_date)
     {
-        if ($release_date === null || $release_date === '') {
-            $this->release_date = null;
-        } else {
-            $this->release_date = trim($release_date);
+        $tanggal = DateTime::createFromFormat(
+            'Y-m-d',
+            $release_date
+        );
+
+        if (
+            !$tanggal ||
+            $tanggal->format('Y-m-d') !== $release_date
+        ) {
+            throw new InvalidArgumentException(
+                'Format tanggal rilis harus YYYY-MM-DD.'
+            );
         }
+
+        $this->release_date = $release_date;
     }
+
 
     public function setPoster($poster)
     {
         if ($poster === null || $poster === '') {
             $this->poster = null;
-        } else {
-            $this->poster = trim($poster);
+            return;
         }
-    }
 
-    // =========================
-    // KONEKSI DATABASE
-    // =========================
-    private static function getDatabaseConnection()
-    {
-        return new DBConnection();
-    }
-
-    // =========================
-    // CREATE
-    // =========================
-    public function create()
-    {
-        $db = self::getDatabaseConnection();
-        $sql = "INSERT INTO movies (genre_id, title, description, duration, release_date, poster) VALUES ($1, $2, $3, $4, $5, $6) RETURNING movie_id";
-        
-        $params = [$this->genre_id, $this->title, $this->description, $this->duration, $this->release_date, $this->poster];
-        $result = $db->send_query($sql, $params);
-
-        if ($result['success'] && !empty($result['data'])) {
-            $this->movie_id = $result['data'][0]['movie_id'];
-            return true;
-        }
-        return false;
-    }
-
-    // =========================
-    // READ
-    // =========================
-    public static function getAll()
-    {
-        $db = self::getDatabaseConnection();
-        $sql = "SELECT * FROM movies ORDER BY movie_id DESC";
-        $result = $db->send_query($sql);
-
-        if ($result['success']) {
-            return $result['data'];
-        }
-        return [];
-    }
-
-    // =========================
-    // READ BY ID
-    // =========================
-    public static function findById($movie_id)
-    {
-        $db = self::getDatabaseConnection();
-        $sql = "SELECT * FROM movies WHERE movie_id = $1";
-        $result = $db->send_query($sql, [$movie_id]);
-
-        if ($result['success'] && !empty($result['data'])) {
-            $data = $result['data'][0];
-            return new Movie(
-                $data['genre_id'],
-                $data['title'],
-                $data['duration'],
-                $data['description'],
-                $data['release_date'],
-                $data['poster'],
-                $data['movie_id']
+        if (strlen($poster) > 255) {
+            throw new InvalidArgumentException(
+                'Nama atau path poster terlalu panjang.'
             );
         }
-        return null;
+
+        $this->poster = trim($poster);
     }
 
-    // =========================
-    // UPDATE
-    // =========================
-    public function update()
+
+    public function setGenreId($genre_id)
     {
-        if ($this->movie_id === null) {
-            throw new RuntimeException('Film belum memiliki ID.');
+        // genre_id boleh NULL sesuai database
+        if ($genre_id === null || $genre_id === '') {
+            $this->genre_id = null;
+            return;
         }
 
-        $db = self::getDatabaseConnection();
-        $sql = "UPDATE movies SET genre_id = $1, title = $2, description = $3, duration = $4, release_date = $5, poster = $6 WHERE movie_id = $7";
-        
-        $params = [
-            $this->genre_id,
-            $this->title,
-            $this->description,
-            $this->duration,
-            $this->release_date,
-            $this->poster,
-            $this->movie_id
-        ];
-        
-        $result = $db->send_query($sql, $params);
-        return $result['success'];
-    }
-
-    // =========================
-    // DELETE
-    // =========================
-    public function delete()
-    {
-        if ($this->movie_id === null) {
-            throw new RuntimeException('Film belum memiliki ID.');
+        if (!is_numeric($genre_id) || $genre_id <= 0) {
+            throw new InvalidArgumentException(
+                'Genre ID harus berupa angka lebih dari 0.'
+            );
         }
 
-        $db = self::getDatabaseConnection();
-        $sql = "DELETE FROM movies WHERE movie_id = $1";
-        
-        $result = $db->send_query($sql, [$this->movie_id]);
-        return $result['success'];
+        $this->genre_id = (int) $genre_id;
     }
+
 
     // =========================
     // SAVE
     // =========================
-    public function save()
+
+    public function save(): bool
     {
-        if ($this->movie_id === null) {
-            return $this->create();
+        // title wajib sesuai database NOT NULL
+        if (empty($this->title)) {
+            throw new InvalidArgumentException(
+                'Judul film tidak boleh kosong.'
+            );
         }
-        return $this->update();
+
+        // duration wajib sesuai database NOT NULL
+        if ($this->duration === null || $this->duration <= 0) {
+            throw new InvalidArgumentException(
+                'Durasi film harus diisi.'
+            );
+        }
+
+        // Nama field disesuaikan dengan tabel movies
+        $data = [
+            'title' => $this->title,
+            'description' => $this->description,
+            'duration' => $this->duration,
+            'release_date' => $this->release_date,
+            'poster' => $this->poster,
+            'genre_id' => $this->genre_id
+        ];
+
+        // Belum punya movie_id = tambah film baru
+        if ($this->movie_id === null) {
+            return parent::create($data);
+        }
+
+        // Sudah punya movie_id = update film
+        return parent::update(
+            $this->movie_id,
+            $data
+        );
     }
 }
