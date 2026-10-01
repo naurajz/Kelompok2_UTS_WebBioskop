@@ -1,18 +1,13 @@
 <?php
-
 /**
  * File     : login.php
  * Card     : Auth-01 Admin Login + Auth-04 Login Pengguna
- * Tugas    : Satu halaman login untuk semua. Setelah berhasil: admin ke admin/genre.php, pembeli ke index.php.
+ * Tugas    : Satu halaman login untuk semua.
  * PIC      : Syahrisham rafif thufail
  * Deadline : 1 Oktober 2026
  */
 
-// Memulai session untuk menyimpan data login
-session_start();
-
-// Memanggil file koneksi database
-require_once 'config/Database.php';
+require_once "bootstrap.php";
 
 // Jika user sudah login, langsung arahkan ke halaman yang sesuai berdasarkan role
 if (isset($_SESSION['user_id'])) {
@@ -24,47 +19,9 @@ if (isset($_SESSION['user_id'])) {
     exit;
 }
 
-$error = '';
-
-// Proses form login jika tombol Masuk diklik (metode POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-    if (empty($email) || empty($password)) {
-        $error = "Email dan password wajib diisi!";
-    } else {
-        $db = new DBConnection();
-        // Query untuk mengambil data user berdasarkan email
-        $query = "SELECT * FROM users WHERE email = $1";
-        $result = $db->send_query($query, [$email]);
-
-        // Cek apakah query berhasil dan data ditemukan
-        if ($result['success'] && !empty($result['data'])) {
-            $user = $result['data'][0];
-
-            // Cek password. Kita dukung password_hash maupun plain text untuk jaga-jaga
-            if (password_verify($password, $user['password']) || $password === $user['password']) {
-                // Set variabel session
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['name'] = $user['name'] ?? 'User';
-
-                // Redirect berdasarkan role (admin / customer)
-                if ($user['role'] === 'admin') {
-                    header("Location: admin/genre.php");
-                } else {
-                    header("Location: index.php");
-                }
-                exit;
-            } else {
-                $error = "Password salah!";
-            }
-        } else {
-            $error = "Email tidak terdaftar!";
-        }
-    }
-}
+// Ambil error dari session (jika ada dari login_post.php)
+$error = $_SESSION['error'] ?? '';
+unset($_SESSION['error']); // Hapus error setelah ditampilkan
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -180,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
-        <form action="login.php" method="POST">
+        <form action="login_post.php" method="POST">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required placeholder="Masukkan email Anda">
