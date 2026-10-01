@@ -3,7 +3,7 @@
  * File     : admin/genre.php
  * Card     : Genre-02 Genre UI
  * Tugas    : Halaman admin kelola genre: tabel + tambah/edit/hapus.
- * PIC      : (Zayyan Ahmad Dzaki W)
+ * PIC      : (isi nama)
  * Deadline : 2 Oktober 2026
  */
 
