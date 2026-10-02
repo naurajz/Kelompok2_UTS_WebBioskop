@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config/dbconnection.php';
+require_once __DIR__ . '/../config/database.php';
 require_once 'Crudable.php';
 
 abstract class BaseModel implements Crudable {

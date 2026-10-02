@@ -10,6 +10,8 @@
 require_once __DIR__ . '/../classes/Movie.php';
 require_once __DIR__ . '/../classes/Genre.php';
 
+// getAll(), getById(), delete() adalah method INSTANCE dari BaseModel,
+// jadi harus dipanggil lewat object, bukan Movie::getAll().
 $movieModel = new Movie();
 $genreModel = new Genre();
 
@@ -21,9 +23,11 @@ $error = '';
 // FUNCTION UNTUK OUTPUT AMAN
 // ==========================
 
-function aman($data)
-{
-    return htmlspecialchars((string) $data, ENT_QUOTES, 'UTF-8');
+if (!function_exists('aman')) {
+    function aman($data)
+    {
+        return htmlspecialchars((string) $data, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 
@@ -42,19 +46,15 @@ if (
             ? (int) $_POST['movie_id']
             : null;
 
-        $title = trim($_POST['title'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $duration = $_POST['duration'] ?? '';
+        $title        = trim($_POST['title'] ?? '');
+        $description  = trim($_POST['description'] ?? '');
+        $duration     = $_POST['duration'] ?? '';
         $release_date = $_POST['release_date'] ?? '';
-        $genre_id = $_POST['genre_id'] ?? null;
+        $genre_id     = $_POST['genre_id'] ?? null;
+        $poster       = null;
 
-        $poster = null;
 
-
-        // ==========================
-        // AMBIL POSTER LAMA SAAT EDIT
-        // ==========================
-
+        // ----- Ambil poster lama saat edit -----
         if ($movie_id !== null) {
             $dataLama = $movieModel->getById($movie_id);
 
@@ -66,30 +66,18 @@ if (
         }
 
 
-        // ==========================
-        // UPLOAD POSTER
-        // ==========================
-
+        // ----- Upload poster -----
         if (
             isset($_FILES['poster'])
             && $_FILES['poster']['error'] === UPLOAD_ERR_OK
         ) {
 
             $namaFile = $_FILES['poster']['name'];
-            $tmpFile = $_FILES['poster']['tmp_name'];
+            $tmpFile  = $_FILES['poster']['tmp_name'];
 
-            $extension = strtolower(
-                pathinfo($namaFile, PATHINFO_EXTENSION)
-            );
+            $extension = strtolower(pathinfo($namaFile, PATHINFO_EXTENSION));
 
-            $extensionDiizinkan = [
-                'jpg',
-                'jpeg',
-                'png',
-                'webp'
-            ];
-
-            if (!in_array($extension, $extensionDiizinkan)) {
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp'])) {
                 throw new Exception(
                     'Poster harus berformat JPG, JPEG, PNG, atau WEBP.'
                 );
@@ -101,28 +89,19 @@ if (
                 mkdir($folderPoster, 0777, true);
             }
 
-            $namaBaru = time()
-                . '_'
-                . uniqid()
-                . '.'
-                . $extension;
+            $namaBaru = time() . '_' . uniqid() . '.' . $extension;
 
-            $tujuan = $folderPoster . $namaBaru;
-
-            if (!move_uploaded_file($tmpFile, $tujuan)) {
-                throw new Exception(
-                    'Poster gagal diupload.'
-                );
+            if (!move_uploaded_file($tmpFile, $folderPoster . $namaBaru)) {
+                throw new Exception('Poster gagal diupload.');
             }
 
             $poster = 'uploads/posters/' . $namaBaru;
         }
 
 
-        // ==========================
-        // BUAT OBJECT MOVIE
-        // ==========================
-
+        // ----- Buat object Movie -----
+        // Urutan constructor:
+        // genre_id, title, duration, description, release_date, poster, movie_id
         $movie = new Movie(
             $genre_id,
             $title,
@@ -133,14 +112,16 @@ if (
             $movie_id
         );
 
-        $movie->save();
-
-
-        if ($movie_id === null) {
-            $pesan = 'Film berhasil ditambahkan.';
-        } else {
-            $pesan = 'Data film berhasil diubah.';
+        // Cek hasil save(), jangan langsung dianggap berhasil
+        if (!$movie->save()) {
+            throw new Exception(
+                'Film gagal disimpan ke database. Pastikan genre_id ada di tabel genres.'
+            );
         }
+
+        $pesan = ($movie_id === null)
+            ? 'Film berhasil ditambahkan.'
+            : 'Data film berhasil diubah.';
 
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -162,18 +143,20 @@ if (
         $movie_id = (int) ($_POST['movie_id'] ?? 0);
 
         if ($movie_id <= 0) {
+            throw new Exception('Movie ID tidak valid.');
+        }
+
+        if (!$movieModel->getById($movie_id)) {
+            throw new Exception('Data film tidak ditemukan.');
+        }
+
+        if (!$movieModel->delete($movie_id)) {
             throw new Exception(
-                'Movie ID tidak valid.'
+                'Film gagal dihapus. Mungkin masih dipakai di jadwal tayang.'
             );
         }
 
-        $hasil = $movieModel->delete($movie_id);
-
-        if ($hasil) {
-            $pesan = 'Film berhasil dihapus.';
-        } else {
-            $error = 'Film gagal dihapus.';
-        }
+        $pesan = 'Film berhasil dihapus.';
 
     } catch (Throwable $e) {
         $error = $e->getMessage();
@@ -187,15 +170,9 @@ if (
 
 $movieEdit = null;
 
-if (
-    isset($_GET['edit'])
-    && is_numeric($_GET['edit'])
-) {
+if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
     try {
-
-        $movieEdit = $movieModel->getById(
-            (int) $_GET['edit']
-        );
+        $movieEdit = $movieModel->getById((int) $_GET['edit']);
 
         if (!$movieEdit) {
             $error = 'Data film tidak ditemukan.';
@@ -228,7 +205,7 @@ try {
 
 
 // ==========================
-// MAP GENRE
+// MAP GENRE (id => nama)
 // ==========================
 
 $genreMap = [];
@@ -238,20 +215,12 @@ foreach ($genres as $genre) {
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Film</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -311,6 +280,7 @@ foreach ($genres as $genre) {
             background: #c62828;
             color: white;
             border: none;
+            margin-top: 0;
         }
 
         .btn-edit {
@@ -365,29 +335,17 @@ foreach ($genres as $genre) {
     </style>
 </head>
 
-
 <body>
-
 <div class="container">
 
     <h1>Kelola Film</h1>
 
-
     <?php if ($pesan !== '') : ?>
-
-        <div class="pesan">
-            <?= aman($pesan); ?>
-        </div>
-
+        <div class="pesan"><?= aman($pesan); ?></div>
     <?php endif; ?>
 
-
     <?php if ($error !== '') : ?>
-
-        <div class="error">
-            <?= aman($error); ?>
-        </div>
-
+        <div class="error"><?= aman($error); ?></div>
     <?php endif; ?>
 
 
@@ -396,186 +354,65 @@ foreach ($genres as $genre) {
     <!-- ========================== -->
 
     <div class="card">
+        <h2><?= $movieEdit ? 'Edit Film' : 'Tambah Film'; ?></h2>
 
-        <h2>
-            <?= $movieEdit
-                ? 'Edit Film'
-                : 'Tambah Film'; ?>
-        </h2>
+        <form method="POST" enctype="multipart/form-data">
 
+            <input type="hidden" name="aksi" value="simpan">
 
-        <form
-            method="POST"
-            enctype="multipart/form-data"
-        >
-
-            <input
-                type="hidden"
-                name="aksi"
-                value="simpan"
-            >
-
-
-            <input
-                type="hidden"
-                name="movie_id"
-                value="<?= $movieEdit
-                    ? aman($movieEdit['movie_id'])
-                    : ''; ?>"
-            >
-
+            <input type="hidden" name="movie_id"
+                   value="<?= $movieEdit ? aman($movieEdit['movie_id']) : ''; ?>">
 
             <!-- TITLE -->
-
             <label>Judul Film</label>
-
-            <input
-                type="text"
-                name="title"
-                maxlength="150"
-                required
-                value="<?= $movieEdit
-                    ? aman($movieEdit['title'])
-                    : ''; ?>"
-            >
-
+            <input type="text" name="title" maxlength="150" required
+                   value="<?= $movieEdit ? aman($movieEdit['title']) : ''; ?>">
 
             <!-- DESCRIPTION -->
-
             <label>Deskripsi / Sinopsis</label>
-
-            <textarea
-                name="description"
-            ><?= $movieEdit
-                ? aman($movieEdit['description'] ?? '')
-                : ''; ?></textarea>
-
+            <textarea name="description"><?= $movieEdit ? aman($movieEdit['description'] ?? '') : ''; ?></textarea>
 
             <!-- DURATION -->
-
             <label>Durasi (menit)</label>
-
-            <input
-                type="number"
-                name="duration"
-                min="1"
-                required
-                value="<?= $movieEdit
-                    ? aman($movieEdit['duration'])
-                    : ''; ?>"
-            >
-
+            <input type="number" name="duration" min="1" required
+                   value="<?= $movieEdit ? aman($movieEdit['duration']) : ''; ?>">
 
             <!-- RELEASE DATE -->
-
-            <label>Tanggal Rilis</label>
-
-            <input
-                type="date"
-                name="release_date"
-                value="<?= $movieEdit
-                    ? aman($movieEdit['release_date'] ?? '')
-                    : ''; ?>"
-            >
-
+            <label>Tanggal Rilis (opsional)</label>
+            <input type="date" name="release_date"
+                   value="<?= $movieEdit ? aman($movieEdit['release_date'] ?? '') : ''; ?>">
 
             <!-- GENRE -->
-
             <label>Genre</label>
-
-            <select
-                name="genre_id"
-                required
-            >
-
-                <option value="">
-                    Pilih Genre
-                </option>
-
+            <select name="genre_id" required>
+                <option value="">Pilih Genre</option>
 
                 <?php foreach ($genres as $genre) : ?>
-
-                    <option
-                        value="<?= aman(
-                            $genre['genre_id']
-                        ); ?>"
-
-                        <?php
-                        if (
-                            $movieEdit
-                            && $movieEdit['genre_id']
-                                == $genre['genre_id']
-                        ) {
-                            echo 'selected';
-                        }
-                        ?>
-                    >
-
-                        <?= aman(
-                            $genre['genre_name']
-                        ); ?>
-
+                    <option value="<?= aman($genre['genre_id']); ?>"
+                        <?= ($movieEdit && $movieEdit['genre_id'] == $genre['genre_id']) ? 'selected' : ''; ?>>
+                        <?= aman($genre['genre_name']); ?>
                     </option>
-
                 <?php endforeach; ?>
-
             </select>
 
-
             <!-- POSTER -->
-
             <label>Poster Film</label>
+            <input type="file" name="poster" accept=".jpg,.jpeg,.png,.webp">
 
-            <input
-                type="file"
-                name="poster"
-                accept=".jpg,.jpeg,.png,.webp"
-            >
-
-
-            <?php if (
-                $movieEdit
-                && !empty($movieEdit['poster'])
-            ) : ?>
-
+            <?php if ($movieEdit && !empty($movieEdit['poster'])) : ?>
                 <p>Poster saat ini:</p>
-
-                <img
-                    class="poster"
-                    src="../<?= aman(
-                        $movieEdit['poster']
-                    ); ?>"
-                    alt="Poster Film"
-                >
-
+                <img class="poster" src="../<?= aman($movieEdit['poster']); ?>" alt="Poster Film">
             <?php endif; ?>
-
 
             <br>
-
-
-            <button
-                type="submit"
-                class="btn-simpan"
-            >
-
-                <?= $movieEdit
-                    ? 'Simpan Perubahan'
-                    : 'Tambah Film'; ?>
-
+            <button type="submit" class="btn-simpan">
+                <?= $movieEdit ? 'Simpan Perubahan' : 'Tambah Film'; ?>
             </button>
 
-
             <?php if ($movieEdit) : ?>
-
-                <a href="movie.php">
-                    Batal Edit
-                </a>
-
+                <a href="movie.php">Batal Edit</a>
             <?php endif; ?>
-
         </form>
-
     </div>
 
 
@@ -584,13 +421,10 @@ foreach ($genres as $genre) {
     <!-- ========================== -->
 
     <div class="card">
-
         <h2>Daftar Film</h2>
 
         <table>
-
             <thead>
-
             <tr>
                 <th>ID</th>
                 <th>Poster</th>
@@ -601,172 +435,65 @@ foreach ($genres as $genre) {
                 <th>Deskripsi</th>
                 <th>Aksi</th>
             </tr>
-
             </thead>
-
-
             <tbody>
 
-
             <?php if (empty($movies)) : ?>
-
                 <tr>
-
-                    <td
-                        colspan="8"
-                        style="text-align:center;"
-                    >
+                    <td colspan="8" style="text-align:center;">
                         Belum ada data film.
                     </td>
-
                 </tr>
-
-
             <?php else : ?>
 
-
                 <?php foreach ($movies as $movie) : ?>
-
                     <tr>
+                        <td><?= aman($movie['movie_id']); ?></td>
 
                         <td>
-                            <?= aman(
-                                $movie['movie_id']
-                            ); ?>
-                        </td>
-
-
-                        <td>
-
-                            <?php if (
-                                !empty($movie['poster'])
-                            ) : ?>
-
-                                <img
-                                    class="poster"
-                                    src="../<?= aman(
-                                        $movie['poster']
-                                    ); ?>"
-                                    alt="Poster"
-                                >
-
+                            <?php if (!empty($movie['poster'])) : ?>
+                                <img class="poster" src="../<?= aman($movie['poster']); ?>" alt="Poster">
                             <?php else : ?>
-
                                 Tidak ada
-
                             <?php endif; ?>
-
                         </td>
 
+                        <td><?= aman($movie['title']); ?></td>
 
-                        <td>
-                            <?= aman(
-                                $movie['title']
-                            ); ?>
-                        </td>
+                        <td><?= aman($genreMap[$movie['genre_id']] ?? '-'); ?></td>
 
+                        <td><?= aman($movie['duration']); ?> menit</td>
 
-                        <td>
+                        <td><?= aman($movie['release_date'] ?? '-'); ?></td>
 
-                            <?= aman(
-                                $genreMap[
-                                    $movie['genre_id']
-                                ] ?? '-'
-                            ); ?>
-
-                        </td>
-
-
-                        <td>
-                            <?= aman(
-                                $movie['duration']
-                            ); ?>
-                            menit
-                        </td>
-
-
-                        <td>
-                            <?= aman(
-                                $movie['release_date']
-                                ?? '-'
-                            ); ?>
-                        </td>
-
-
-                        <td>
-                            <?= aman(
-                                $movie['description']
-                                ?? ''
-                            ); ?>
-                        </td>
-
+                        <td><?= aman($movie['description'] ?? ''); ?></td>
 
                         <td class="aksi">
 
                             <!-- EDIT -->
-
-                            <a
-                                class="btn-edit"
-                                href="movie.php?edit=<?= aman(
-                                    $movie['movie_id']
-                                ); ?>"
-                            >
+                            <a class="btn-edit"
+                               href="movie.php?edit=<?= aman($movie['movie_id']); ?>">
                                 Edit
                             </a>
 
-
                             <!-- DELETE -->
-
-                            <form
-                                method="POST"
-                                onsubmit="
-                                    return confirm(
-                                        'Yakin ingin menghapus film ini?'
-                                    );
-                                "
-                            >
-
-                                <input
-                                    type="hidden"
-                                    name="aksi"
-                                    value="hapus"
-                                >
-
-                                <input
-                                    type="hidden"
-                                    name="movie_id"
-                                    value="<?= aman(
-                                        $movie['movie_id']
-                                    ); ?>"
-                                >
-
-                                <button
-                                    type="submit"
-                                    class="btn-hapus"
-                                >
-                                    Hapus
-                                </button>
-
+                            <form method="POST"
+                                  onsubmit="return confirm('Yakin ingin menghapus film ini?');">
+                                <input type="hidden" name="aksi" value="hapus">
+                                <input type="hidden" name="movie_id"
+                                       value="<?= aman($movie['movie_id']); ?>">
+                                <button type="submit" class="btn-hapus">Hapus</button>
                             </form>
-
                         </td>
-
                     </tr>
-
                 <?php endforeach; ?>
-
 
             <?php endif; ?>
 
-
             </tbody>
-
         </table>
-
     </div>
 
 </div>
-
 </body>
-
 </html>
