@@ -8,62 +8,44 @@
  * Deadline : 3 Oktober 2026
  */
 
-// Pastikan session aktif agar data login user tersedia
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Wajib login (Trx-02): redirect ke login jika belum masuk
+// Wajib login (Trx-02)
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-// Ambil showtime_id dari query string URL atau POST
 $showtimeId = (int)($_GET['showtime_id'] ?? $_POST['showtime_id'] ?? 0);
-
-// Jika belum ada parameter dari modul film, halaman tampil kosong
 if ($showtimeId <= 0) {
     exit;
 }
 
-// Muat class Order (yang otomatis membawa DBConnection via BaseModel)
 require_once __DIR__ . '/classes/Order.php';
 
-// Data pemesan diambil otomatis dari sesi login (Trx-02)
 $currentUserId    = (int)$_SESSION['user_id'];
 $currentUserName  = $_SESSION['username'] ?? 'Pengguna';
 $currentUserEmail = $_SESSION['email'] ?? '';
 
-// Buat instance Order (koneksi PostgreSQL sudah dibuat oleh BaseModel)
 $orderModel = new Order();
+$showtime   = $orderModel->getShowtimeInfo($showtimeId);
 
-// Ambil rincian jadwal tayang menggunakan method Order::getShowtimeInfo (Trx-02)
-$showtime = $orderModel->getShowtimeInfo($showtimeId);
-
-// Jika data jadwal dari modul film belum ada di database, tampil kosong
 if (!$showtime) {
     exit;
 }
 
-// Cek sisa kuota kursi untuk jadwal ini
 $quotaInfo     = $orderModel->checkQuota($showtimeId, 1);
 $ticketPrice   = (float)($showtime['price'] ?? 50000);
 $maxSelectable = $quotaInfo ? min(6, (int)$quotaInfo['remaining']) : 6;
 
-// ==============================================================================
-// PROSES FORM SUBMIT CHECKOUT
-// ==============================================================================
 $checkoutError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_checkout'])) {
     $quantity = (int)($_POST['quantity'] ?? 1);
-
-    // Validasi jumlah tiket: 1 sampai 6 lembar (Trx-02)
     if ($quantity >= 1 && $quantity <= 6) {
         try {
-            // Simpan order + tiket dalam satu transaksi atomik (Trx-01)
             $result = $orderModel->createOrderWithTickets($currentUserId, $showtimeId, $quantity);
-
             if ($result && isset($result['order_id'])) {
                 header("Location: confirm.php?order_id=" . $result['order_id']);
                 exit;
@@ -73,205 +55,465 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_checkout'])) {
         }
     }
 }
-
-// Judul halaman untuk header.php
-$page_title = 'Checkout - ' . ($showtime['movie_title'] ?? 'Bioskop');
 ?>
-<?php require_once __DIR__ . '/includes/header.php'; ?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout – HIMTI MOVIE</title>
 
 <style>
-    body { background-color: #141414 !important; color: #e5e5e5 !important; }
-    .main-content { background-color: #141414; }
 
-    .co-card {
-        background-color: #1e1e1e;
-        border: 1px solid #2a2a2a;
-        border-radius: 10px;
-    }
-    .co-label { color: #888; font-size: 0.8rem; margin-bottom: 4px; }
+/* =====================================================
+   RESET
+===================================================== */
 
-    .form-control, .form-control:focus {
-        background-color: #2a2a2a !important;
-        border: 1px solid #3a3a3a !important;
-        color: #e5e5e5 !important;
-        box-shadow: none !important;
-    }
-    .form-control[readonly] { opacity: 0.65; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    .table { color: #ccc; --bs-table-bg: transparent; }
-    .table td { border-color: #2a2a2a; }
+body {
+    background: #080808;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
 
-    .qty-btn {
-        width: 44px; height: 44px;
-        border: 1px solid #3a3a3a;
-        background-color: #2a2a2a;
-        color: #ccc;
-        border-radius: 6px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all .15s;
-    }
-    .qty-btn.active {
-        background-color: #e50914;
-        border-color: #e50914;
-        color: #fff;
-    }
-    .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-    .qty-btn:not(.active):not(:disabled):hover {
-        border-color: #e50914;
-        color: #e50914;
-    }
+a {
+    text-decoration: none;
+    color: inherit;
+}
 
-    .price-box {
-        background-color: #111;
-        border: 1px solid #2a2a2a;
-        border-radius: 8px;
-        padding: 1rem 1.25rem;
-    }
-    .price-box hr { border-color: #333; }
-    .total-val { color: #e50914; font-size: 1.05rem; }
 
-    .btn-pesan {
-        background-color: #e50914;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 12px;
-        font-weight: 700;
-        width: 100%;
-        transition: background .2s;
-        cursor: pointer;
-    }
-    .btn-pesan:hover { background-color: #c1070f; }
+/* =====================================================
+   NAVBAR
+===================================================== */
 
-    .btn-back-link { color: #888; text-decoration: none; font-size: .875rem; }
-    .btn-back-link:hover { color: #e50914; }
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72px;
+    background: rgba(8,8,8,0.96);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 55px;
+    z-index: 9999;
+    border-bottom: 1px solid #222;
+}
 
-    .page-heading { color: #fff; font-weight: 700; }
-    .co-title { color: #fff; }
-    .text-genre { color: #888; font-size: .85rem; }
-    .alert-danger { background-color: #2d0707; border-color: #7a1010; color: #f88; border-radius: 8px; }
+.logo {
+    font-size: 25px;
+    font-weight: 900;
+}
+
+.logo span {
+    color: #e50914;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.nav-menu a {
+    color: #ddd;
+    font-size: 14px;
+}
+
+.nav-menu a:hover {
+    color: #e50914;
+}
+
+
+/* =====================================================
+   PAGE WRAPPER
+===================================================== */
+
+.page-wrap {
+    margin-top: 72px;
+    padding: 60px 7%;
+    min-height: calc(100vh - 72px);
+}
+
+.back-link {
+    display: inline-block;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 30px;
+    transition: color .2s;
+}
+
+.back-link:hover {
+    color: #e50914;
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 40px;
+}
+
+.page-title span {
+    color: #e50914;
+}
+
+
+/* =====================================================
+   GRID
+===================================================== */
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    max-width: 900px;
+}
+
+@media (max-width: 700px) {
+    .checkout-grid { grid-template-columns: 1fr; }
+    .navbar { padding: 0 20px; }
+    .page-wrap { padding: 50px 5%; }
+}
+
+
+/* =====================================================
+   CARD
+===================================================== */
+
+.card {
+    background: #121212;
+    border: 1px solid #252525;
+    border-radius: 12px;
+    padding: 28px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #e50914;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.poster-img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.movie-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.movie-sub {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 18px;
+}
+
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.info-table tr td {
+    padding: 9px 4px;
+    font-size: 14px;
+    border-bottom: 1px solid #1e1e1e;
+}
+
+.info-table td.lbl {
+    color: #888;
+    width: 40%;
+}
+
+.info-table td.val {
+    font-weight: 600;
+}
+
+.info-table td.val-red {
+    font-weight: 700;
+    color: #e50914;
+}
+
+.seat-badge {
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.seat-ok  { background: #122212; color: #4caf50; }
+.seat-no  { background: #2d0707; color: #f44; }
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.field-label {
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+
+.field-input {
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 7px;
+    color: #aaa;
+    padding: 10px 14px;
+    font-size: 14px;
+    margin-bottom: 18px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.field-input[readonly] {
+    cursor: default;
+    opacity: .7;
+}
+
+.qty-label {
+    color: #888;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.qty-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.qty-btn {
+    width: 44px;
+    height: 44px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 7px;
+    color: #aaa;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.qty-btn.active,
+.qty-btn:not(:disabled):hover {
+    background: #e50914;
+    border-color: #e50914;
+    color: #fff;
+}
+
+.qty-btn:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+}
+
+.price-box {
+    background: #0e0e0e;
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 22px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 6px 0;
+}
+
+.price-lbl { color: #888; }
+
+.price-divider {
+    border: none;
+    border-top: 1px solid #222;
+    margin: 8px 0;
+}
+
+.price-total {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e50914;
+}
+
+.btn-order {
+    width: 100%;
+    background: #e50914;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: Arial, Helvetica, sans-serif;
+    transition: background .2s;
+}
+
+.btn-order:hover {
+    background: #c1070f;
+}
+
+.error-box {
+    background: #2d0707;
+    border: 1px solid #7a1010;
+    color: #f88;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
 </style>
+</head>
+<body>
 
-<div class="container py-4">
 
-    <div class="mb-3">
-        <a href="javascript:history.back()" class="btn-back-link">&larr; Kembali</a>
+<!-- NAVBAR -->
+<nav class="navbar">
+
+    <div class="logo">
+        HIMTI
+        <span>MOVIE</span>
     </div>
 
-    <h2 class="page-heading mb-4">Checkout Tiket</h2>
+    <div class="nav-menu">
+        <a href="index.php">Home</a>
+        <a href="index.php#movies">Movies</a>
+        <a href="history.php">Pesanan Saya</a>
+        <a href="logout.php" style="background:#e50914;padding:10px 20px;border-radius:7px;color:white;">Keluar</a>
+    </div>
+
+</nav>
+
+
+<!-- PAGE CONTENT -->
+<div class="page-wrap">
+
+    <a href="javascript:history.back()" class="back-link">&#8592; Kembali</a>
+
+    <h2 class="page-title">Check<span>out</span></h2>
 
     <?php if ($checkoutError): ?>
-        <div class="alert alert-danger mb-4"><?= htmlspecialchars($checkoutError) ?></div>
+    <div class="error-box"><?= htmlspecialchars($checkoutError) ?></div>
     <?php endif; ?>
 
-    <div class="row g-4">
+    <div class="checkout-grid">
 
-        <!-- Kolom Kiri: Info Film & Jadwal -->
-        <div class="col-md-6">
-            <div class="co-card h-100 p-3">
-                <?php if (!empty($showtime['movie_poster'])): ?>
-                    <img src="<?= htmlspecialchars($showtime['movie_poster']) ?>"
-                         alt="Poster" class="img-fluid rounded mb-3"
-                         style="max-height:200px;object-fit:cover;width:100%;"
-                         onerror="this.style.display='none'">
-                <?php endif; ?>
+        <!-- Info Film -->
+        <div class="card">
+            <div class="card-title">Info Film</div>
 
-                <h5 class="co-title fw-bold mb-1"><?= htmlspecialchars($showtime['movie_title'] ?? 'Judul Film') ?></h5>
-                <p class="text-genre mb-3">
-                    <?= htmlspecialchars($showtime['genre_name'] ?? 'General') ?> &bull;
-                    <?= (int)($showtime['movie_duration'] ?? 120) ?> Menit
-                </p>
+            <?php if (!empty($showtime['movie_poster'])): ?>
+            <img src="<?= htmlspecialchars($showtime['movie_poster']) ?>"
+                 alt="Poster" class="poster-img"
+                 onerror="this.style.display='none'">
+            <?php endif; ?>
 
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr>
-                            <td class="co-label">Studio</td>
-                            <td class="fw-semibold"><?= htmlspecialchars($showtime['studio_name'] ?? '-') ?></td>
-                        </tr>
-                        <tr>
-                            <td class="co-label">Tanggal</td>
-                            <td class="fw-semibold"><?= !empty($showtime['show_date']) ? date('d M Y', strtotime($showtime['show_date'])) : '-' ?></td>
-                        </tr>
-                        <tr>
-                            <td class="co-label">Jam Tayang</td>
-                            <td class="fw-semibold"><?= !empty($showtime['show_time']) ? date('H:i', strtotime($showtime['show_time'])) . ' WIB' : '-' ?></td>
-                        </tr>
-                        <tr>
-                            <td class="co-label">Harga / Tiket</td>
-                            <td class="fw-semibold" style="color:#e50914;">Rp <?= number_format($ticketPrice, 0, ',', '.') ?></td>
-                        </tr>
-                        <?php if ($quotaInfo): ?>
-                        <tr>
-                            <td class="co-label">Sisa Kursi</td>
-                            <td>
-                                <span style="font-size:.8rem;padding:2px 8px;border-radius:4px;background:<?= $quotaInfo['remaining'] > 0 ? '#1a3d22' : '#3d1a1a' ?>;color:<?= $quotaInfo['remaining'] > 0 ? '#4caf50' : '#f44336' ?>;">
-                                    <?= $quotaInfo['remaining'] ?> tersedia
-                                </span>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+            <div class="movie-title"><?= htmlspecialchars($showtime['movie_title'] ?? '-') ?></div>
+            <div class="movie-sub">
+                <?= htmlspecialchars($showtime['genre_name'] ?? 'General') ?> &bull;
+                <?= (int)($showtime['movie_duration'] ?? 120) ?> Menit
             </div>
+
+            <table class="info-table">
+                <tr>
+                    <td class="lbl">Studio</td>
+                    <td class="val"><?= htmlspecialchars($showtime['studio_name'] ?? '-') ?></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Tanggal</td>
+                    <td class="val"><?= !empty($showtime['show_date']) ? date('d M Y', strtotime($showtime['show_date'])) : '-' ?></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Jam Tayang</td>
+                    <td class="val"><?= !empty($showtime['show_time']) ? date('H:i', strtotime($showtime['show_time'])) . ' WIB' : '-' ?></td>
+                </tr>
+                <tr>
+                    <td class="lbl">Harga / Tiket</td>
+                    <td class="val val-red">Rp <?= number_format($ticketPrice, 0, ',', '.') ?></td>
+                </tr>
+                <?php if ($quotaInfo): ?>
+                <tr>
+                    <td class="lbl">Sisa Kursi</td>
+                    <td class="val">
+                        <span class="seat-badge <?= $quotaInfo['remaining'] > 0 ? 'seat-ok' : 'seat-no' ?>">
+                            <?= $quotaInfo['remaining'] ?> tersedia
+                        </span>
+                    </td>
+                </tr>
+                <?php endif; ?>
+            </table>
         </div>
 
-        <!-- Kolom Kanan: Form Pemilihan Tiket -->
-        <div class="col-md-6">
-            <div class="co-card h-100 p-3">
-                <h5 class="co-title fw-bold mb-4">Rincian Pemesanan</h5>
+        <!-- Form Pemesanan -->
+        <div class="card">
+            <div class="card-title">Rincian Pemesanan</div>
 
-                <form method="POST" action="checkout.php?showtime_id=<?= $showtimeId ?>">
-                    <input type="hidden" name="showtime_id" value="<?= $showtimeId ?>">
-                    <input type="hidden" name="quantity" id="inputQuantity" value="1">
+            <form method="POST" action="checkout.php?showtime_id=<?= $showtimeId ?>">
+                <input type="hidden" name="showtime_id" value="<?= $showtimeId ?>">
+                <input type="hidden" name="quantity" id="inputQuantity" value="1">
 
-                    <div class="mb-3">
-                        <div class="co-label">Nama Pemesan</div>
-                        <input type="text" class="form-control" value="<?= htmlspecialchars($currentUserName) ?>" readonly>
+                <div class="field-label">Nama Pemesan</div>
+                <input type="text" class="field-input" value="<?= htmlspecialchars($currentUserName) ?>" readonly>
+
+                <div class="field-label">Email</div>
+                <input type="email" class="field-input" value="<?= htmlspecialchars($currentUserEmail) ?>" readonly>
+
+                <div class="qty-label">Jumlah Tiket (Maks. 6)</div>
+                <div class="qty-row">
+                    <?php for ($i = 1; $i <= 6; $i++): ?>
+                        <button type="button"
+                                class="qty-btn <?= $i === 1 ? 'active' : '' ?>"
+                                data-qty="<?= $i ?>"
+                                <?= $i > $maxSelectable ? 'disabled' : '' ?>>
+                            <?= $i ?>
+                        </button>
+                    <?php endfor; ?>
+                </div>
+
+                <div class="price-box">
+                    <div class="price-row">
+                        <span class="price-lbl">Harga / Tiket</span>
+                        <span>Rp <?= number_format($ticketPrice, 0, ',', '.') ?></span>
                     </div>
-                    <div class="mb-4">
-                        <div class="co-label">Email</div>
-                        <input type="email" class="form-control" value="<?= htmlspecialchars($currentUserEmail) ?>" readonly>
+                    <div class="price-row">
+                        <span class="price-lbl">Jumlah</span>
+                        <span id="displayQty">1 Tiket</span>
                     </div>
-
-                    <!-- Pilih Jumlah Tiket 1–6 (Trx-02) -->
-                    <div class="mb-4">
-                        <div class="co-label mb-2">Jumlah Tiket (Maks. 6 Lembar)</div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <?php for ($i = 1; $i <= 6; $i++): ?>
-                                <?php $disabled = ($i > $maxSelectable); ?>
-                                <button type="button"
-                                        class="qty-btn <?= $i === 1 ? 'active' : '' ?>"
-                                        data-qty="<?= $i ?>"
-                                        <?= $disabled ? 'disabled' : '' ?>>
-                                    <?= $i ?>
-                                </button>
-                            <?php endfor; ?>
-                        </div>
+                    <hr class="price-divider">
+                    <div class="price-row">
+                        <span style="font-weight:700;">Total</span>
+                        <span id="displayTotal" class="price-total">Rp <?= number_format($ticketPrice, 0, ',', '.') ?></span>
                     </div>
+                </div>
 
-                    <!-- Rincian Harga -->
-                    <div class="price-box mb-4">
-                        <div class="d-flex justify-content-between mb-2" style="font-size:.875rem;">
-                            <span class="co-label">Harga / Tiket</span>
-                            <span>Rp <?= number_format($ticketPrice, 0, ',', '.') ?></span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-2" style="font-size:.875rem;">
-                            <span class="co-label">Jumlah</span>
-                            <span id="displayQty">1 Tiket</span>
-                        </div>
-                        <hr>
-                        <div class="d-flex justify-content-between fw-bold">
-                            <span>Total</span>
-                            <span id="displayTotal" class="total-val">Rp <?= number_format($ticketPrice, 0, ',', '.') ?></span>
-                        </div>
-                    </div>
-
-                    <button type="submit" name="btn_checkout" class="btn-pesan">
-                        Konfirmasi &amp; Pesan
-                    </button>
-                </form>
-            </div>
+                <button type="submit" name="btn_checkout" class="btn-order">
+                    Konfirmasi &amp; Pesan
+                </button>
+            </form>
         </div>
 
     </div>
@@ -296,4 +538,5 @@ $page_title = 'Checkout - ' . ($showtime['movie_title'] ?? 'Bioskop');
     });
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+</body>
+</html>

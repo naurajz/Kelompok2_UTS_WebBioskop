@@ -14,13 +14,11 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/classes/Ticket.php';
 
-// Tangkap parameter order_id dari URL browser
 $orderId = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
 if ($orderId <= 0 && isset($_GET['code'])) {
     $orderId = (int)preg_replace('/[^0-9]/', '', $_GET['code']);
 }
 
-// Jika parameter tidak ada, tampil kosong
 if ($orderId <= 0) {
     exit;
 }
@@ -32,12 +30,11 @@ try {
     $ticketData = null;
 }
 
-// Jika data tiket belum ada di database, tampil kosong
 if (!$ticketData) {
     exit;
 }
 
-// Proteksi akses: pastikan user hanya bisa melihat tiket miliknya sendiri (kecuali admin)
+// Hanya pemilik yang boleh akses (kecuali admin)
 $sessionUserId = $_SESSION['user_id'] ?? null;
 $sessionRole   = $_SESSION['role'] ?? 'customer';
 if ($sessionUserId && isset($ticketData['user_id']) && $sessionRole !== 'admin') {
@@ -45,135 +42,334 @@ if ($sessionUserId && isset($ticketData['user_id']) && $sessionRole !== 'admin')
         exit;
     }
 }
-
-$page_title = 'E-Ticket - ' . htmlspecialchars($ticketData['booking_code']);
 ?>
-<?php require_once __DIR__ . '/includes/header.php'; ?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Ticket – HIMTI MOVIE</title>
 
 <style>
-    body { background-color: #141414 !important; color: #e5e5e5 !important; }
-    .main-content { background-color: #141414; }
 
-    .ticket-wrap { max-width: 620px; margin: 0 auto; }
+/* =====================================================
+   RESET
+===================================================== */
 
-    .ticket-card {
-        background-color: #1e1e1e;
-        border: 1px solid #2a2a2a;
-        border-radius: 12px;
-        overflow: hidden;
-    }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-    /* Header kartu tiket */
-    .ticket-header {
-        background-color: #111;
-        border-bottom: 2px solid #e50914;
-        padding: 1.25rem 1.5rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .ticket-brand { color: #e50914; font-weight: 800; font-size: 1.1rem; letter-spacing: .5px; }
-    .ticket-badge {
-        background-color: #1a3d22;
-        color: #4caf50;
-        font-size: .7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        padding: 3px 10px;
-        border-radius: 4px;
-    }
+body {
+    background: #080808;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
 
-    .ticket-body { padding: 1.5rem; }
+a {
+    text-decoration: none;
+    color: inherit;
+}
 
-    /* Kode booking */
-    .booking-box {
-        background-color: #111;
-        border: 1px dashed #e50914;
-        border-radius: 8px;
-        text-align: center;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .booking-label { color: #888; font-size: .7rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-    .booking-code  { font-family: monospace; font-size: 2rem; font-weight: 700; color: #e50914; letter-spacing: 4px; }
 
-    /* Tabel rincian */
-    .detail-table { width: 100%; border-collapse: collapse; }
-    .detail-table tr td { padding: 10px 6px; font-size: .9rem; border-bottom: 1px solid #252525; }
-    .detail-table tr:last-child td { border-bottom: none; }
-    .detail-table td.lbl { color: #888; width: 40%; }
-    .detail-table td.val { font-weight: 600; color: #e5e5e5; }
-    .detail-table td.val-price { font-weight: 700; color: #e50914; font-size: 1rem; }
+/* =====================================================
+   NAVBAR
+===================================================== */
 
-    /* Divider berlubang khas tiket bioskop */
-    .ticket-divider {
-        position: relative;
-        height: 24px;
-        margin: 0 -0px;
-    }
-    .ticket-divider::before,
-    .ticket-divider::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 16px; height: 16px;
-        background-color: #141414;
-        border-radius: 50%;
-        z-index: 2;
-    }
-    .ticket-divider::before { left: -8px; }
-    .ticket-divider::after  { right: -8px; }
-    .ticket-divider-line {
-        position: absolute;
-        top: 50%;
-        left: 8px; right: 8px;
-        border-top: 2px dashed #2a2a2a;
-    }
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72px;
+    background: rgba(8,8,8,0.96);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 55px;
+    z-index: 9999;
+    border-bottom: 1px solid #222;
+}
 
-    /* Footer tiket */
-    .ticket-footer {
-        background-color: #111;
-        padding: .875rem 1.5rem;
-        font-size: .78rem;
-        color: #555;
-        text-align: center;
-    }
+.logo {
+    font-size: 25px;
+    font-weight: 900;
+}
 
-    /* Nav links */
-    .nav-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .nav-area a { color: #888; text-decoration: none; font-size: .875rem; }
-    .nav-area a:hover { color: #e50914; }
-    .btn-cetak {
-        background-color: #2a2a2a;
-        border: 1px solid #3a3a3a;
-        color: #888;
-        padding: 5px 14px;
-        border-radius: 6px;
-        font-size: .8rem;
-        cursor: not-allowed;
-    }
+.logo span {
+    color: #e50914;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.nav-menu a {
+    color: #ddd;
+    font-size: 14px;
+}
+
+.nav-menu a:hover {
+    color: #e50914;
+}
+
+
+/* =====================================================
+   PAGE WRAPPER
+===================================================== */
+
+.page-wrap {
+    margin-top: 72px;
+    padding: 60px 7%;
+    min-height: calc(100vh - 72px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.ticket-wrap {
+    width: 100%;
+    max-width: 600px;
+}
+
+.nav-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.back-link {
+    color: #888;
+    font-size: 14px;
+    transition: color .2s;
+}
+
+.back-link:hover {
+    color: #e50914;
+}
+
+.btn-cetak {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #555;
+    padding: 8px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: not-allowed;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* =====================================================
+   TICKET CARD
+===================================================== */
+
+.ticket-card {
+    background: #121212;
+    border: 1px solid #252525;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.ticket-header {
+    background: #0e0e0e;
+    border-bottom: 3px solid #e50914;
+    padding: 18px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ticket-brand {
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: .5px;
+}
+
+.ticket-brand span {
+    color: #e50914;
+}
+
+.ticket-badge {
+    background: #1c3520;
+    color: #4caf50;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #2a5030;
+}
+
+.ticket-body {
+    padding: 28px;
+}
+
+/* Kode booking */
+.booking-box {
+    background: #0a0a0a;
+    border: 1px dashed #e50914;
+    border-radius: 10px;
+    text-align: center;
+    padding: 20px;
+    margin-bottom: 28px;
+}
+
+.booking-label {
+    color: #888;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+}
+
+.booking-code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: #e50914;
+    letter-spacing: 6px;
+}
+
+/* Tabel rincian */
+.detail-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.detail-table tr td {
+    padding: 11px 4px;
+    font-size: 14px;
+    border-bottom: 1px solid #1c1c1c;
+}
+
+.detail-table tr:last-child td {
+    border-bottom: none;
+}
+
+.detail-table td.lbl {
+    color: #888;
+    width: 42%;
+}
+
+.detail-table td.val {
+    font-weight: 600;
+}
+
+.detail-table td.val-red {
+    font-weight: 700;
+    color: #e50914;
+    font-size: 16px;
+}
+
+
+/* =====================================================
+   TICKET DIVIDER
+===================================================== */
+
+.ticket-divider {
+    position: relative;
+    height: 28px;
+    margin: 0;
+}
+
+.ticket-divider::before,
+.ticket-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    background: #080808;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.ticket-divider::before { left: -9px; }
+.ticket-divider::after  { right: -9px; }
+
+.ticket-divider-line {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    right: 10px;
+    border-top: 2px dashed #2a2a2a;
+}
+
+
+/* =====================================================
+   TICKET FOOTER
+===================================================== */
+
+.ticket-footer {
+    background: #0a0a0a;
+    padding: 14px 28px;
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+    border-top: 1px solid #1e1e1e;
+}
+
+@media (max-width: 600px) {
+    .navbar { padding: 0 20px; }
+    .page-wrap { padding: 50px 5%; }
+    .booking-code { font-size: 1.7rem; letter-spacing: 3px; }
+    .ticket-body { padding: 20px; }
+    .ticket-header { padding: 14px 20px; }
+}
+
 </style>
+</head>
+<body>
 
-<div class="container py-4">
+
+<!-- NAVBAR -->
+<nav class="navbar">
+
+    <div class="logo">
+        HIMTI
+        <span>MOVIE</span>
+    </div>
+
+    <div class="nav-menu">
+        <a href="index.php">Home</a>
+        <a href="index.php#movies">Movies</a>
+        <a href="history.php">Pesanan Saya</a>
+        <a href="logout.php" style="background:#e50914;padding:10px 20px;border-radius:7px;color:white;">Keluar</a>
+    </div>
+
+</nav>
+
+
+<!-- PAGE CONTENT -->
+<div class="page-wrap">
     <div class="ticket-wrap">
 
         <div class="nav-area">
             <div>
-                <a href="history.php">&larr; Riwayat Pesanan</a>
-                <span style="color:#444;margin:0 6px;">|</span>
-                <a href="index.php">Beranda</a>
+                <a href="history.php" class="back-link">&#8592; Riwayat Pesanan</a>
+                <span style="color:#333;margin:0 8px;">|</span>
+                <a href="index.php" class="back-link">Beranda</a>
             </div>
             <button type="button" class="btn-cetak" disabled>Cetak E-Ticket</button>
         </div>
 
         <div class="ticket-card">
 
-            <!-- Header -->
+            <!-- Header kartu tiket -->
             <div class="ticket-header">
-                <span class="ticket-brand">&#127916; Cinema XXI / Bioskop</span>
-                <span class="ticket-badge">Tiket Sah</span>
+                <div class="ticket-brand">
+                    HIMTI <span>MOVIE</span>
+                </div>
+                <div class="ticket-badge">Tiket Sah</div>
             </div>
 
             <div class="ticket-body">
@@ -223,11 +419,11 @@ $page_title = 'E-Ticket - ' . htmlspecialchars($ticketData['booking_code']);
                     <?php endif; ?>
                     <tr>
                         <td class="lbl">Total Pembayaran</td>
-                        <td class="val val-price">Rp <?= number_format((float)$ticketData['total_price'], 0, ',', '.') ?></td>
+                        <td class="val val-red">Rp <?= number_format((float)$ticketData['total_price'], 0, ',', '.') ?></td>
                     </tr>
                     <tr>
                         <td class="lbl">Waktu Transaksi</td>
-                        <td class="val" style="color:#666;font-size:.85rem;">
+                        <td class="val" style="color:#666;font-size:13px;">
                             <?= !empty($ticketData['order_date']) ? date('d/m/Y H:i', strtotime($ticketData['order_date'])) : '-' ?>
                         </td>
                     </tr>
@@ -235,8 +431,10 @@ $page_title = 'E-Ticket - ' . htmlspecialchars($ticketData['booking_code']);
 
             </div>
 
-            <!-- Divider khas tiket -->
-            <div class="ticket-divider"><div class="ticket-divider-line"></div></div>
+            <!-- Divider berlubang khas tiket -->
+            <div class="ticket-divider">
+                <div class="ticket-divider-line"></div>
+            </div>
 
             <!-- Footer tiket -->
             <div class="ticket-footer">
@@ -247,4 +445,5 @@ $page_title = 'E-Ticket - ' . htmlspecialchars($ticketData['booking_code']);
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+</body>
+</html>

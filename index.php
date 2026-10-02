@@ -1,7 +1,7 @@
 <?php
 
 $conn = pg_connect(
-    "host=localhost port=5432 dbname=bioskop user=postgres password=12345678"
+    "host=localhost port=5432 dbname=bioskop user=postgres password=alvito1321"
 );
 
 if (!$conn) {
