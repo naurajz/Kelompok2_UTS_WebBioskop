@@ -8,24 +8,22 @@
  * Deadline : 3 Oktober 2026
  */
 
-// Panggil file class induk (BaseModel.php) karena class Ticket adalah turunan (anak) dari BaseModel
 require_once __DIR__ . '/BaseModel.php';
 
 /**
- * Class Ticket
- * Mengelola data tiket bioskop, generate kode booking pesanan, dan kode tiket individual.
+ * Class Ticket mewakili tabel 'tickets' (ticket_id, order_id, seat_number).
+ * Mengimplementasikan konsep OOP dasar sesuai Modul 4:
+ * - Inheritance dari BaseModel (menggunakan koneksi DBConnection PostgreSQL)
+ * - Encapsulation (properti private dengan getter dan setter)
+ * - Static method untuk generate kode booking unik (Ticket-03)
+ * - Magic method __toString()
  */
-class Ticket extends BaseModel {
-    // Nama tabel database yang dihubungkan ke class ini
-    protected $table = 'tickets';
-
-    // Properti-properti yang mewakili kolom di tabel MySQL 'tickets'
-    // Dibikin 'protected' (Encapsulation) supaya datanya aman dan nggak bisa sembarangan diubah dari luar
-    protected $id;          // ID unik primary key tiket
-    protected $order_id;     // ID pesanan yang punya tiket ini (relasi ke tabel orders)
-    protected $ticket_code;  // Kode unik lembar tiket, contoh: BK7F3A2-1
-    protected $seat_number;  // Nomor kursi bioskop yang dipilih, contoh: A1 atau Kursi 1
-    protected $created_at;   // Tanggal & jam kapan tiket ini dibuat
+class Ticket extends BaseModel
+{
+    // Property sesuai kolom tabel 'tickets' di database/bioskop.sql
+    private $ticket_id;
+    private $order_id;
+    private $seat_number;
 
     /**
      * Constructor Ticket
