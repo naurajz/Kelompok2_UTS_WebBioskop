@@ -8,365 +8,132 @@
  * Deadline : 3 Oktober 2026
  */
 
-// Mulai session agar kita bisa mengakses data login user
+// Pastikan session aktif agar data login user tersedia
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Tangkap parameter order_id dari query string URL
+// Ambil order_id dari query string URL
 $orderId = (int)($_GET['order_id'] ?? 0);
 
-// Jika parameter orderId belum ada dari proses sebelumnya, buat putih saja
+// Jika belum ada parameter dari proses checkout, tampil kosong
 if ($orderId <= 0) {
     exit;
 }
 
-// Inisialisasi koneksi database PDO
-$db = null;
-
-if (file_exists(__DIR__ . '/config/Database.php')) {
-    require_once __DIR__ . '/config/Database.php';
-    if (class_exists('Database')) {
-        $db = (new Database())->getConnection();
-    }
-}
-
-if (!$db) {
-    try {
-        $db = new PDO("mysql:host=localhost;dbname=bioskop;charset=utf8mb4", "root", "", [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]);
-    } catch (PDOException $e) {
-        $db = null;
-    }
-}
-
-if (!$db) {
-    exit;
-}
-
-// Hubungkan ke class Order dan Ticket di folder classes
+// Muat class Order (yang otomatis membawa DBConnection via BaseModel)
 require_once __DIR__ . '/classes/Order.php';
-require_once __DIR__ . '/classes/Ticket.php';
 
-$orderModel = new Order($db);
+$orderModel = new Order();
+
+// Ambil rincian lengkap pesanan (JOIN ke showtimes, movies, genres, studios, users)
 $order = $orderModel->getOrderDetail($orderId);
 
-// Jika data pesanan belum ada di database, buat putih saja
+// Jika pesanan belum ada di database, tampil kosong
 if (!$order) {
     exit;
 }
 
-// Validasi keamanan: pastikan pesanan ini milik user yang sedang login atau role admin
-$currentUserId = $_SESSION['user_id'] ?? null;
+// Validasi: hanya pemilik pesanan atau admin yang boleh akses
+$currentUserId   = $_SESSION['user_id'] ?? null;
 $currentUserRole = $_SESSION['role'] ?? 'customer';
 
-if ($currentUserId && $order['user_id'] && $currentUserRole !== 'admin' && $order['user_id'] != $currentUserId) {
+if ($currentUserId && isset($order['user_id']) && $currentUserRole !== 'admin'
+    && (int)$order['user_id'] !== (int)$currentUserId) {
     exit;
 }
+
+// Judul halaman untuk header.php
+$page_title = 'Konfirmasi Pesanan';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $order ? 'Konfirmasi Pesanan - ' . htmlspecialchars($order['booking_code']) : 'Konfirmasi Pesanan' ?></title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<?php require_once __DIR__ . '/includes/header.php'; ?>
 
-    <style>
-        :root {
-            --primary: #e50914;
-            --primary-hover: #b80710;
-            --dark-bg: #0f1015;
-            --card-bg: #181920;
-            --border-color: #2e303d;
-            --text-muted: #9ca3af;
-            --success: #10b981;
-            --success-bg: rgba(16, 185, 129, 0.12);
-        }
+<div class="container py-4" style="max-width:680px;">
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    <div class="card shadow-sm">
+        <div class="card-body p-4 text-center">
 
-        body {
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--dark-bg);
-            color: #ffffff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .confirm-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 36px 32px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            text-align: center;
-        }
-
-        /* Ikon Sukses Animasi Ringan */
-        .success-icon-box {
-            width: 72px;
-            height: 72px;
-            background-color: var(--success-bg);
-            color: var(--success);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-        }
-
-        .success-title {
-            font-size: 24px;
-            font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 8px;
-        }
-
-        .success-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 24px;
-        }
-
-        /* Kotak Kode Booking Menjolok (Jobdesk Trx-03) */
-        .booking-badge-container {
-            background: #14151b;
-            border: 1px dashed var(--border-color);
-            border-radius: 14px;
-            padding: 20px;
-            margin-bottom: 28px;
-        }
-
-        .badge-caption {
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
-
-        .booking-code-text {
-            font-family: 'Space Mono', monospace;
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--primary);
-            letter-spacing: 3px;
-        }
-
-        .btn-copy {
-            margin-top: 10px;
-            background: transparent;
-            border: 1px solid #374151;
-            color: #d1d5db;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-copy:hover {
-            border-color: #9ca3af;
-            color: #ffffff;
-        }
-
-        /* Rincian Ringkasan Pesanan */
-        .order-summary-box {
-            background: #191a22;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: left;
-            margin-bottom: 28px;
-        }
-
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #232530;
-            font-size: 14px;
-        }
-
-        .summary-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .summary-label {
-            color: var(--text-muted);
-        }
-
-        .summary-val {
-            font-weight: 700;
-            color: #ffffff;
-            text-align: right;
-        }
-
-        /* Tombol Aksi */
-        .actions-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 14px 24px;
-            border-radius: 10px;
-            font-size: 15px;
-            font-weight: 700;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-        }
-
-        .btn-primary {
-            background-color: var(--primary);
-            color: #ffffff;
-            box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background-color: #272833;
-            color: #d1d5db;
-        }
-
-        .btn-secondary:hover {
-            background-color: #373949;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-
-    <div class="confirm-card">
-        
             <!-- Ikon Sukses -->
-            <div class="success-icon-box">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
+            <div class="mb-3">
+                <span class="display-5 text-success">&#10003;</span>
             </div>
+            <h3 class="mb-1">Pesanan Berhasil!</h3>
+            <p class="text-muted mb-4">Tiket bioskop Anda telah berhasil dipesan.</p>
 
-            <h1 class="success-title">Pesanan Berhasil!</h1>
-            <p class="success-subtitle">Tiket bioskop Anda telah berhasil dipesan dan dikonfirmasi.</p>
-
-            <!-- Kotak Kode Booking Unik (Jobdesk Trx-03) -->
-            <div class="booking-badge-container">
-                <div class="badge-caption">Kode Booking Anda</div>
-                <div class="booking-code-text" id="bookingCodeText"><?= htmlspecialchars($order['booking_code']) ?></div>
-                <button type="button" class="btn-copy" onclick="copyBookingCode()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                    <span id="copyBtnText">Salin Kode</span>
+            <!-- Kode Booking (Trx-03) -->
+            <div class="bg-light rounded p-3 mb-4 border">
+                <p class="text-muted small mb-1">Kode Booking</p>
+                <div class="fs-3 fw-bold font-monospace text-danger" id="bookingCodeText">
+                    <?= htmlspecialchars($order['booking_code'] ?? '-') ?>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="salinKode()">
+                    Salin Kode
                 </button>
             </div>
 
-            <!-- Rincian Ringkasan Pesanan (Trx-03) -->
-            <div class="order-summary-box">
-                <div class="summary-item">
-                    <span class="summary-label">Judul Film</span>
-                    <span class="summary-val"><?= htmlspecialchars($order['movie_title'] ?? 'Film Bioskop') ?></span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Studio</span>
-                    <span class="summary-val"><?= htmlspecialchars($order['studio_name'] ?? 'Studio 1') ?></span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Jadwal Tayang</span>
-                    <span class="summary-val">
-                        <?= !empty($order['show_date']) ? date('d M Y', strtotime($order['show_date'])) : '-' ?> &bull; 
-                        <?= !empty($order['show_time']) ? date('H:i', strtotime($order['show_time'])) . ' WIB' : '-' ?>
-                    </span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Jumlah Tiket</span>
-                    <span class="summary-val"><?= (int)$order['total_tickets'] ?> Lembar</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Total Pembayaran</span>
-                    <span class="summary-val" style="color: var(--primary); font-size: 16px;">
-                        Rp <?= number_format((float)$order['total_price'], 0, ',', '.') ?>
-                    </span>
-                </div>
+            <!-- Rincian Pesanan (Trx-03) -->
+            <div class="text-start mb-4">
+                <table class="table table-sm table-borderless">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted">Film</td>
+                            <td class="fw-semibold text-end"><?= htmlspecialchars($order['movie_title'] ?? '-') ?></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Studio</td>
+                            <td class="fw-semibold text-end"><?= htmlspecialchars($order['studio_name'] ?? '-') ?></td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Jadwal</td>
+                            <td class="fw-semibold text-end">
+                                <?= !empty($order['show_date']) ? date('d M Y', strtotime($order['show_date'])) : '-' ?>
+                                &bull;
+                                <?= !empty($order['show_time']) ? date('H:i', strtotime($order['show_time'])) . ' WIB' : '-' ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Jumlah Tiket</td>
+                            <td class="fw-semibold text-end"><?= (int)($order['total_tickets'] ?? 1) ?> Lembar</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Total Bayar</td>
+                            <td class="fw-bold text-end text-danger fs-5">
+                                Rp <?= number_format((float)($order['total_price'] ?? 0), 0, ',', '.') ?>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <!-- Tombol Navigasi Aksi Langsung ke Ticket-02 -->
-            <div class="actions-group">
-                <a href="ticket.php?order_id=<?= $order['id'] ?>" class="btn btn-primary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                    </svg>
-                    Buka &amp; Cetak E-Ticket
+            <!-- Tombol Aksi -->
+            <div class="d-grid gap-2">
+                <a href="ticket.php?order_id=<?= $order['order_id'] ?>" class="btn btn-dark">
+                    Lihat E-Tiket
                 </a>
-                <div style="display: flex; gap: 10px;">
-                    <a href="history.php" class="btn btn-secondary" style="flex: 1;">
-                        Riwayat Pesanan
-                    </a>
-                    <a href="index.php" class="btn btn-secondary" style="flex: 1;">
-                        Beranda
-                    </a>
+                <div class="row g-2">
+                    <div class="col">
+                        <a href="history.php" class="btn btn-outline-secondary w-100">Riwayat Pesanan</a>
+                    </div>
+                    <div class="col">
+                        <a href="index.php" class="btn btn-outline-secondary w-100">Beranda</a>
+                    </div>
                 </div>
             </div>
 
+        </div>
     </div>
 
 </div>
 
 <script>
-    // Fungsi untuk menyalin kode booking ke papan klip (clipboard)
-    function copyBookingCode() {
-        const codeText = document.getElementById('bookingCodeText').innerText.trim();
-        const copyBtnText = document.getElementById('copyBtnText');
-
-        navigator.clipboard.writeText(codeText).then(() => {
-            copyBtnText.innerText = 'Tersalin!';
-            setTimeout(() => {
-                copyBtnText.innerText = 'Salin Kode';
-            }, 2000);
-        }).catch(err => {
-            alert('Kode booking: ' + codeText);
+    function salinKode() {
+        const kode = document.getElementById('bookingCodeText').innerText.trim();
+        navigator.clipboard.writeText(kode).then(() => {
+            alert('Kode booking disalin: ' + kode);
+        }).catch(() => {
+            alert('Kode booking: ' + kode);
         });
     }
 </script>
 
-</body>
-</html>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>
