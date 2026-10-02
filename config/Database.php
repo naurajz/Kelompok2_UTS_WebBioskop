@@ -5,7 +5,7 @@ class DBConnection
     private string $port = "5432";
     private string $dbname = "bioskop";
     private string $username = "postgres";
-    private string $password = "12345678";
+    private string $password = "alvito1321";
     private $dbconn = null;
 
     public function __construct()
