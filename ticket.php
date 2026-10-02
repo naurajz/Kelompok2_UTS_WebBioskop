@@ -38,230 +38,116 @@ if (!$ticketData) {
     exit;
 }
 
-// Proteksi akses: pastikan user hanya bisa melihat tiket miliknya sendiri (kecuali admin)
-$currentUser = $_SESSION['user'] ?? null;
-if ($currentUser && isset($currentUser['iduser'])) {
-    $isOwner = ((int)$currentUser['iduser'] === (int)$ticketData['user_id']);
-    $isAdmin = (isset($currentUser['role']) && strtolower($currentUser['role']) === 'admin');
-    if (!$isOwner && !$isAdmin) {
-        exit;
-    }
+// Proteksi akses: pastikan user hanya bisa melihat tiket miliknya sendiri (kecuali role admin)
+$currentUserId = $_SESSION['user_id'] ?? ($_SESSION['user']['user_id'] ?? null);
+$currentUserRole = $_SESSION['role'] ?? ($_SESSION['user']['role'] ?? 'customer');
+if ($currentUserId && !empty($ticketData['user_id']) && $currentUserRole !== 'admin' && (int)$currentUserId !== (int)$ticketData['user_id']) {
+    exit;
 }
+
+// Judul halaman diselaraskan dengan header dan nama bioskop kelompok
+$page_title = "E-Ticket #" . $ticketData['booking_code'];
+require_once __DIR__ . '/includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Ticket - <?= htmlspecialchars($ticketData['booking_code']) ?></title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f7f7f9;
-            color: #333333;
-            margin: 0;
-            padding: 24px 16px;
-        }
 
-        .container {
-            max-width: 680px;
-            margin: 0 auto;
-        }
+<div class="container py-4" style="max-width: 720px;">
 
-        .nav-links {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .nav-links a {
-            color: #1f4e79;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .btn-print {
-            background-color: #e2e5ea;
-            border: 1px solid #d1d5db;
-            color: #555555;
-            padding: 6px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            cursor: default;
-        }
-
-        .kartu-tiket {
-            background: #ffffff;
-            border: 1px solid #e2e5ea;
-            border-radius: 8px;
-            padding: 24px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-        }
-
-        .header-tiket {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #1f4e79;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
-        }
-
-        .header-tiket h2 {
-            margin: 0;
-            color: #1f4e79;
-            font-size: 20px;
-        }
-
-        .badge-status {
-            background-color: #e8f4fd;
-            color: #1f4e79;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-
-        .kode-booking-box {
-            background-color: #f0f4f8;
-            border: 1px dashed #1f4e79;
-            border-radius: 6px;
-            text-align: center;
-            padding: 12px;
-            margin-bottom: 20px;
-        }
-
-        .kode-booking-label {
-            font-size: 12px;
-            color: #666666;
-            margin-bottom: 4px;
-        }
-
-        .kode-booking-nilai {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1f4e79;
-            letter-spacing: 2px;
-        }
-
-        .tabel-rincian {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 16px;
-        }
-
-        .tabel-rincian td {
-            padding: 8px 6px;
-            font-size: 14px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .tabel-rincian td.label {
-            color: #666666;
-            width: 35%;
-        }
-
-        .tabel-rincian td.nilai {
-            font-weight: 600;
-            color: #222222;
-        }
-
-        .total-harga {
-            font-size: 16px;
-            color: #1f4e79;
-            font-weight: 700;
-        }
-
-        .catatan {
-            font-size: 12px;
-            color: #888888;
-            text-align: center;
-            margin-top: 16px;
-            line-height: 1.4;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-
-    <div class="nav-links">
+    <!-- Baris Navigasi & Aksi -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <a href="history.php">&larr; Riwayat Pesanan</a> | 
-            <a href="index.php">Beranda</a>
+            <a href="history.php" class="btn btn-outline-secondary btn-sm me-2">
+                <i class="bi bi-arrow-left me-1"></i>Riwayat Pesanan
+            </a>
+            <a href="index.php" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-house me-1"></i>Beranda
+            </a>
         </div>
-        <button type="button" class="btn-print" disabled>Cetak E-Ticket</button>
+        <button type="button" class="btn btn-secondary btn-sm" disabled>
+            <i class="bi bi-printer me-1"></i>Cetak E-Ticket
+        </button>
     </div>
 
-    <div class="kartu-tiket">
-        <div class="header-tiket">
-            <h2>CINESTAR CINEMA</h2>
-            <span class="badge-status">TIKET SAH</span>
+    <!-- Kartu E-Ticket Sesuai Standar Modul & Kelompok -->
+    <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+        <!-- Header Kartu: Judul Bioskop & Status -->
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 text-warning">
+                <i class="bi bi-film me-2"></i>Cinema XXI / Bioskop
+            </h5>
+            <span class="badge bg-success px-3 py-2 text-uppercase">
+                <i class="bi bi-check-circle me-1"></i>Tiket Sah
+            </span>
         </div>
 
-        <div class="kode-booking-box">
-            <div class="kode-booking-label">KODE BOOKING</div>
-            <div class="kode-booking-nilai"><?= htmlspecialchars($ticketData['booking_code']) ?></div>
-        </div>
+        <div class="card-body p-4 bg-white">
+            <!-- Box Kode Booking -->
+            <div class="alert alert-light border border-secondary text-center py-3 mb-4 rounded-3">
+                <div class="text-secondary small fw-semibold text-uppercase mb-1">Kode Booking</div>
+                <div class="h3 fw-bold text-dark mb-0 font-monospace" style="letter-spacing: 2px;">
+                    <?= htmlspecialchars($ticketData['booking_code']) ?>
+                </div>
+            </div>
 
-        <table class="tabel-rincian">
-            <tr>
-                <td class="label">Judul Film</td>
-                <td class="nilai"><?= htmlspecialchars($ticketData['movie_title']) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Studio</td>
-                <td class="nilai"><?= htmlspecialchars($ticketData['studio_name']) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Tanggal Tayang</td>
-                <td class="nilai"><?= date('d F Y', strtotime($ticketData['show_date'])) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Jam Tayang</td>
-                <td class="nilai"><?= date('H:i', strtotime($ticketData['show_time'])) ?> WIB</td>
-            </tr>
-            <tr>
-                <td class="label">Nama Pemesan</td>
-                <td class="nilai"><?= htmlspecialchars($ticketData['username']) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Jumlah Tiket</td>
-                <td class="nilai"><?= (int)$ticketData['total_tickets'] ?> Tiket</td>
-            </tr>
-            <?php if (!empty($ticketData['tickets'])): ?>
-            <tr>
-                <td class="label">Nomor Kursi</td>
-                <td class="nilai">
-                    <?php 
-                        $seats = array_map(function($t) { return $t['seat_number']; }, $ticketData['tickets']);
-                        echo htmlspecialchars(implode(', ', $seats));
-                    ?>
-                </td>
-            </tr>
-            <?php endif; ?>
-            <tr>
-                <td class="label">Total Pembayaran</td>
-                <td class="nilai total-harga">Rp <?= number_format((float)$ticketData['total_price'], 0, ',', '.') ?></td>
-            </tr>
-            <tr>
-                <td class="label">Waktu Transaksi</td>
-                <td class="nilai" style="font-size: 13px; color: #555555;"><?= date('d/m/Y H:i', strtotime($ticketData['order_date'])) ?></td>
-            </tr>
-        </table>
+            <!-- Tabel Rincian Tiket & Jadwal Tayang -->
+            <div class="table-responsive">
+                <table class="table table-borderless align-middle mb-0">
+                    <tbody>
+                        <tr class="border-bottom">
+                            <td class="text-secondary" style="width: 35%;">Judul Film</td>
+                            <td class="fw-bold text-dark"><?= htmlspecialchars($ticketData['movie_title']) ?></td>
+                        </tr>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Studio</td>
+                            <td class="fw-bold text-dark"><?= htmlspecialchars($ticketData['studio_name']) ?></td>
+                        </tr>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Tanggal Tayang</td>
+                            <td class="fw-semibold text-dark"><?= date('d F Y', strtotime($ticketData['show_date'])) ?></td>
+                        </tr>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Jam Tayang</td>
+                            <td class="fw-semibold text-dark"><?= date('H:i', strtotime($ticketData['show_time'])) ?> WIB</td>
+                        </tr>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Nama Pemesan</td>
+                            <td class="fw-semibold text-dark"><?= htmlspecialchars($ticketData['username']) ?></td>
+                        </tr>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Jumlah Tiket</td>
+                            <td class="fw-semibold text-dark"><?= (int)$ticketData['total_tickets'] ?> Tiket</td>
+                        </tr>
+                        <?php if (!empty($ticketData['tickets'])): ?>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Nomor Kursi</td>
+                            <td class="fw-bold text-dark">
+                                <?php 
+                                    $seats = array_map(function($t) { return $t['seat_number']; }, $ticketData['tickets']);
+                                    echo htmlspecialchars(implode(', ', $seats));
+                                ?>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr class="border-bottom">
+                            <td class="text-secondary">Total Pembayaran</td>
+                            <td class="fw-bold text-success fs-5">Rp <?= number_format((float)$ticketData['total_price'], 0, ',', '.') ?></td>
+                        </tr>
+                        <tr>
+                            <td class="text-secondary">Waktu Transaksi</td>
+                            <td class="text-secondary small"><?= date('d/m/Y H:i', strtotime($ticketData['order_date'])) ?></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <div class="catatan">
-            Tunjukkan kode booking ini kepada petugas bioskop saat memasuki studio.
+            <!-- Catatan Penggunaan -->
+            <div class="text-center text-muted small mt-4 pt-3 border-top">
+                <i class="bi bi-info-circle me-1"></i>Tunjukkan kode booking ini kepada petugas bioskop saat memasuki studio.
+            </div>
         </div>
     </div>
 
 </div>
 
-</body>
-</html>
+<?php
+require_once __DIR__ . '/includes/footer.php';
+?>
