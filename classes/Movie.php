@@ -94,17 +94,14 @@ class Movie extends BaseModel
     {
         return $this->duration;
     }
-
     public function getReleaseDate()
     {
         return $this->release_date;
     }
-
     public function getPoster()
     {
         return $this->poster;
     }
-
     public function getGenreId()
     {
         return $this->genre_id;
