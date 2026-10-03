@@ -17,8 +17,7 @@ class DBConnection
     {
         $conn_string = "host={$this->host} port={$this->port} dbname={$this->dbname} "
             . "user={$this->username} password={$this->password}";
-
-        $this->dbconn = @pg_connect($conn_string);
+        $this->dbconn = @pg_connect($conn_string, PGSQL_CONNECT_FORCE_NEW);
 
         if (!$this->dbconn) {
             $last_error = error_get_last()['message'] ?? '';
@@ -53,27 +52,26 @@ class DBConnection
 
     public function close_connection(): void
     {
-        if ($this->dbconn) {
-            pg_close($this->dbconn);
-            $this->dbconn = null;
+        if ($this->dbconn !== null) {
+            try {
+                pg_close($this->dbconn);
+            } catch (Throwable $e) {
+            }
+            $this->dbconn = null; 
         }
     }
-
     public function __destruct()
     {
         $this->close_connection();
     }
-
     public function mulai_transaksi(): void
     {
         pg_query($this->dbconn, "BEGIN");
     }
-
     public function commit(): void
     {
         pg_query($this->dbconn, "COMMIT");
     }
-
     public function rollback(): void
     {
         pg_query($this->dbconn, "ROLLBACK");
