@@ -1,13 +1,4 @@
 <?php
-/**
- * File     : admin/index.php
- * Card     : [Kode card]
- * Tugas    : Dashboard admin: ringkasan data dan menu ke halaman kelola film, genre, jadwal.
- * PIC      : [Nama PIC]
- * NIM      : [NIM]
- * Deadline : [Tanggal deadline]
- */
-
 require_once __DIR__ . '/../includes/admin_guard.php';
 
 $db = new DBConnection();
@@ -27,31 +18,167 @@ $cards = [
     ['Pesanan',       'bi-receipt',        'orders',    'orders.php'],
     ['Studio',        'bi-display',        'studios',   'studio.php'],
 ];
-
-$page_title = 'Dashboard Admin';
-$base_url = '../';
-require_once __DIR__ . '/../includes/header.php';
 ?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - HIMTI MOVIE</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-<div class="container py-4">
-    <h2 class="h4 mb-4"><i class="bi bi-speedometer2 me-2"></i>Dashboard Admin</h2>
+        body {
+            background: #080808;
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+        }
 
-    <div class="row g-3">
+        a { text-decoration: none; color: inherit; }
+
+        /* NAVBAR */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 72px;
+            background: rgba(8, 8, 8, 0.96);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 55px;
+            z-index: 9999;
+            border-bottom: 1px solid #222;
+        }
+
+        .logo { font-size: 25px; font-weight: 900; }
+        .logo span { color: #e50914; }
+        .logo small {
+            font-size: 11px;
+            color: #888;
+            letter-spacing: 2px;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .nav-menu { display: flex; align-items: center; gap: 32px; }
+        .nav-menu a { color: #ddd; font-size: 14px; }
+        .nav-menu a:hover { color: #e50914; }
+
+        .logout {
+            background: #e50914;
+            padding: 10px 20px;
+            border-radius: 7px;
+            color: white !important;
+        }
+        .logout:hover { background: #b20710; }
+
+        /* CONTENT */
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 120px 25px 60px;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+        .title span { color: #e50914; }
+
+        .subtitle { color: #888; margin-bottom: 35px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: #121212;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 28px 20px;
+            text-align: center;
+            transition: .3s;
+        }
+
+        .card:hover {
+            transform: translateY(-7px);
+            border-color: #e50914;
+            box-shadow: 0 15px 35px rgba(229, 9, 20, .18);
+        }
+
+        .card i { font-size: 38px; color: #e50914; }
+
+        .card .number {
+            font-size: 48px;
+            font-weight: 900;
+            margin: 8px 0 2px;
+        }
+
+        .card .label { color: #888; font-size: 14px; margin-bottom: 18px; }
+
+        .card .btn {
+            display: inline-block;
+            background: #e50914;
+            padding: 9px 22px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .card .btn:hover { background: #b20710; }
+
+        @media (max-width: 850px) {
+            .navbar { padding: 0 20px; }
+            .nav-menu { gap: 15px; }
+            .nav-menu a:not(.logout) { display: none; }
+            .grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 550px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="logo">
+        HIMTI <span>MOVIE</span>
+        <small>ADMIN</small>
+    </div>
+
+    <div class="nav-menu">
+        <a href="index.php">Dashboard</a>
+        <a href="../index.php">Lihat Website</a>
+        <a href="../logout.php" class="logout"
+           onclick="return confirm('Yakin ingin logout?');">
+            <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+    </div>
+</nav>
+
+<div class="container">
+    <h1 class="title">Dashboard <span>Admin</span></h1>
+    <p class="subtitle">Ringkasan data dan menu pengelolaan.</p>
+
+    <div class="grid">
         <?php foreach ($cards as [$label, $icon, $key, $href]): ?>
-            <div class="col-6 col-lg-4">
-                <div class="card shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <i class="bi <?= $icon ?> fs-1 text-warning"></i>
-                        <div class="display-6 fw-bold"><?= (int)$stat[$key] ?></div>
-                        <div class="text-muted mb-3"><?= htmlspecialchars($label) ?></div>
-                        <?php if ($href): ?>
-                            <a href="<?= $href ?>" class="btn btn-dark btn-sm">Kelola</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
+            <div class="card">
+                <i class="bi <?= $icon ?>"></i>
+                <div class="number"><?= (int) $stat[$key] ?></div>
+                <div class="label"><?= htmlspecialchars($label) ?></div>
+                <?php if ($href): ?>
+                    <a href="<?= $href ?>" class="btn">KELOLA</a>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+</body>
+</html>

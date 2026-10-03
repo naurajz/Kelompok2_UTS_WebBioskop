@@ -1,9 +1,4 @@
 <?php
-/**
- * File     : includes/admin_guard.php
- * Tugas    : Memuat bootstrap dan membatasi halaman admin hanya untuk role admin.
- */
-
 require_once __DIR__ . '/../bootstrap.php';
 
 if (!isset($_SESSION['user_id'])) {
