@@ -56,3 +56,27 @@ create table tickets (
     order_id INT REFERENCES orders(order_id) ON DELETE CASCADE,
     seat_number VARCHAR(10) NOT NULL
 );
+
+-- Genre
+INSERT INTO genres (genre_name)
+SELECT t.v
+FROM (VALUES
+    ('Aksi'), ('Horor'), ('Komedi'), ('Drama'),
+    ('Romantis'), ('Fiksi Ilmiah'), ('Animasi'), ('Thriller')
+) AS t(v)
+WHERE NOT EXISTS (
+    SELECT 1 FROM genres g WHERE LOWER(g.genre_name) = LOWER(t.v)
+);
+
+-- Studio
+INSERT INTO studios (studio_name, capacity)
+SELECT t.n, t.c
+FROM (VALUES
+    ('Studio 1', 100),
+    ('Studio 2', 80),
+    ('Studio 3', 60),
+    ('Studio 4 (Premiere)', 40)
+) AS t(n, c)
+WHERE NOT EXISTS (
+    SELECT 1 FROM studios s WHERE LOWER(s.studio_name) = LOWER(t.n)
+);

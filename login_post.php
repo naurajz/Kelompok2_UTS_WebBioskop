@@ -39,7 +39,7 @@ try {
 
             // Redirect berdasarkan role
             if ($roleName === 'admin') {
-                header("Location: index.php");
+                header("Location: admin/dashboard_admin.php");
             } else {
                 header("Location: index.php");
             }
