@@ -117,7 +117,6 @@ class Showtime extends BaseModel {
     public function getMovieOptions() {
         return $this->db->send_query("SELECT movie_id, title FROM movies ORDER BY title ASC")['data'];
     }
-
     public function getStudioOptions() {
         return $this->db->send_query("SELECT studio_id, studio_name FROM studios ORDER BY studio_name ASC")['data'];
     }
