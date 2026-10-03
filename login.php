@@ -1,12 +1,4 @@
 <?php
-/**
- * File     : login.php
- * Card     : Auth-01 Admin Login + Auth-04 Login Pengguna
- * Tugas    : Satu halaman login untuk semua.
- * PIC      : Syahrisham rafif thufail
- * Deadline : 1 Oktober 2026
- */
-
 require_once "bootstrap.php";
 
 // Jika user sudah login, langsung arahkan ke halaman yang sesuai berdasarkan role
