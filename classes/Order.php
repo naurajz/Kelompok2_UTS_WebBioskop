@@ -2,67 +2,60 @@
 /**
  * File     : classes/Order.php
  * Card     : Trx-01 Order & CO Backend
- * Tugas    : Class Order extends BaseModel. Isi: cek sisa kuota, hitung total, simpan order + tiket dalam satu transaksi database (beginTransaction, commit, rollBack).
+ * Tugas    : Class Order extends BaseModel. Isi: cek sisa kuota, hitung total,
+ *            simpan order + tiket dalam satu transaksi database.
  * PIC      : Davientyo Arifius Putra
  * NIM      : 434251115
  * Deadline : 3 Oktober 2026
  */
 
-// Panggil file class induk (BaseModel.php) dan class Ticket untuk pembuatan kode booking & tiket
+// Panggil file class induk dan class Ticket untuk pembuatan tiket
 require_once __DIR__ . '/BaseModel.php';
 require_once __DIR__ . '/Ticket.php';
 
 /**
  * Class Order
- * Mengelola transaksi pesanan tiket, pengecekan sisa kuota studio, kalkulasi total harga,
- * dan penyimpanan atomik (Database Transaction) antara tabel orders dan tickets.
+ * Mengelola transaksi pesanan tiket, pengecekan sisa kuota studio,
+ * kalkulasi total harga, dan penyimpanan atomik antara tabel orders dan tickets.
+ * Menggunakan koneksi DBConnection PostgreSQL via BaseModel.
  */
 class Order extends BaseModel {
-    // Nama tabel database yang dihubungkan ke class ini
-    protected $table = 'orders';
 
-    // Properti kolom tabel orders MySQL
-    protected $id;            // Primary key ID pesanan
-    protected $user_id;       // ID user pembeli (relasi ke tabel users)
-    protected $showtime_id;   // ID jadwal tayang yang dipesan (relasi ke tabel showtimes)
-    protected $booking_code;  // Kode unik booking pesanan (contoh: BK7F3A2)
-    protected $total_tickets; // Jumlah tiket yang dibeli (1-6 lembar)
-    protected $total_price;   // Total nominal yang harus dibayar (contoh: 150000)
-    protected $status;        // Status pesanan ('PAID' / 'CONFIRMED' / 'CANCELLED')
-    protected $created_at;     // Waktu pesanan dibuat
+    // Properti sesuai kolom tabel orders di database/bioskop.sql
+    private $order_id;     // Primary key pesanan (SERIAL)
+    private $user_id;      // ID user pembeli (FK ke users)
+    private $showtime_id;  // ID jadwal tayang (FK ke showtimes)
+    private $total_price;  // Total harga transaksi
+    private $order_date;   // Tanggal pesanan (DEFAULT CURRENT_TIMESTAMP)
 
     /**
      * Constructor Order
-     * Mendukung fleksibilitas pemanggilan:
-     * 1. Dependency Injection DB: new Order($db, $userId, $showtimeId, $quantity, $totalPrice)
-     * 2. Format praktis soal UTS : new Order($userId, $showtimeId, $quantity) -> contoh: new Order(1, 5, 3)
+     * Memanggil BaseModel dengan nama tabel 'orders' dan primary key 'order_id'.
+     *
+     * @param int|null    $user_id      ID pembeli
+     * @param int|null    $showtime_id  ID jadwal tayang
+     * @param float|null  $total_price  Total harga
      */
-    public function __construct($arg1 = null, $arg2 = null, $arg3 = null, $arg4 = null, $arg5 = null) {
-        // Cek apakah parameter pertama adalah objek koneksi database (PDO)
-        if (is_object($arg1)) {
-            parent::__construct($arg1);
-            $this->user_id       = $arg2;
-            $this->showtime_id   = $arg3;
-            $this->total_tickets = $arg4;
-            $this->total_price   = $arg5;
-        } else {
-            // Jika dipanggil dengan format: new Order($userId, $showtimeId, $totalTickets)
-            parent::__construct(null);
-            $this->user_id       = $arg1;
-            $this->showtime_id   = $arg2;
-            $this->total_tickets = $arg3;
-            $this->total_price   = $arg4;
-        }
+    public function __construct($user_id = null, $showtime_id = null, $total_price = null) {
+        parent::__construct('orders', 'order_id');
 
-        // Default status pesanan
-        if (!$this->status) {
-            $this->status = 'CONFIRMED';
-        }
+        $this->user_id     = $user_id;
+        $this->showtime_id = $showtime_id;
+        $this->total_price = $total_price;
     }
 
     // ==========================================
     // GETTER & SETTER (Encapsulation)
     // ==========================================
+
+    public function getOrderId() {
+        return $this->order_id;
+    }
+
+    public function setOrderId($order_id) {
+        $this->order_id = $order_id;
+        return $this;
+    }
 
     public function getUserId() {
         return $this->user_id;
@@ -82,48 +75,12 @@ class Order extends BaseModel {
         return $this;
     }
 
-    public function getBookingCode() {
-        return $this->booking_code;
-    }
-
-    public function setBookingCode($booking_code) {
-        $this->booking_code = $booking_code;
-        return $this;
-    }
-
-    public function getTotalTickets() {
-        return $this->total_tickets;
-    }
-
-    public function setTotalTickets($total_tickets) {
-        $this->total_tickets = $total_tickets;
-        return $this;
-    }
-
     public function getTotalPrice() {
         return $this->total_price;
     }
 
     public function setTotalPrice($total_price) {
         $this->total_price = $total_price;
-        return $this;
-    }
-
-    public function getStatus() {
-        return $this->status;
-    }
-
-    public function setStatus($status) {
-        $this->status = $status;
-        return $this;
-    }
-
-    public function getCreatedAt() {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt($created_at) {
-        $this->created_at = $created_at;
         return $this;
     }
 
@@ -134,10 +91,10 @@ class Order extends BaseModel {
     /**
      * Menghitung total harga pesanan (Jobdesk Trx-01)
      * Contoh: 3 tiket x Rp 50.000 = Rp 150.000
-     * 
-     * @param float|int $ticketPrice Harga per satu tiket
-     * @param int $quantity Jumlah tiket yang dibeli
-     * @return float|int Total nominal harga
+     *
+     * @param float|int $ticketPrice  Harga per tiket
+     * @param int       $quantity     Jumlah tiket
+     * @return float
      */
     public static function calculateTotal($ticketPrice, $quantity) {
         return (float)$ticketPrice * (int)$quantity;
@@ -145,35 +102,22 @@ class Order extends BaseModel {
 
     /**
      * Memeriksa sisa kuota kursi yang masih tersedia untuk jadwal tayang tertentu (Jobdesk Trx-01)
-     * Menghitung kapasitas studio dikurangi tiket yang sudah laku terjual
-     * 
-     * @param int $showtimeId ID jadwal tayang (showtimes.id)
-     * @param int $requestedTickets Jumlah tiket yang ingin dibeli pembeli (default: 1)
+     * Menghitung kapasitas studio dikurangi tiket dari order yang sudah ada.
+     *
+     * @param int $showtimeId        ID jadwal tayang
+     * @param int $requestedTickets  Jumlah tiket yang ingin dibeli
      * @return array Status ketersediaan kuota beserta rincian angka
      */
     public function checkQuota($showtimeId, $requestedTickets = 1) {
-        if (!$this->db) {
-            return [
-                'available' => false,
-                'remaining' => 0,
-                'capacity'  => 0,
-                'sold'      => 0,
-                'price'     => 0,
-                'message'   => 'Koneksi database tidak tersedia.'
-            ];
-        }
-
         // 1. Ambil kapasitas studio dan harga tiket dari showtime
-        $sqlShowtime = "SELECT st.id, st.price, COALESCE(s.capacity, 50) AS capacity 
-                        FROM showtimes st 
-                        LEFT JOIN studios s ON st.studio_id = s.id 
-                        WHERE st.id = :showtime_id 
-                        LIMIT 1";
-        $stmtShowtime = $this->db->prepare($sqlShowtime);
-        $stmtShowtime->execute([':showtime_id' => $showtimeId]);
-        $showtime = $stmtShowtime->fetch(PDO::FETCH_ASSOC);
+        $query = "SELECT st.showtime_id, st.price, COALESCE(s.capacity, 50) AS capacity
+                  FROM showtimes st
+                  LEFT JOIN studios s ON st.studio_id = s.studio_id
+                  WHERE st.showtime_id = $1
+                  LIMIT 1";
+        $response = $this->db->send_query($query, [(int)$showtimeId]);
 
-        if (!$showtime) {
+        if (!$response['success'] || empty($response['data'])) {
             return [
                 'available' => false,
                 'remaining' => 0,
@@ -184,20 +128,23 @@ class Order extends BaseModel {
             ];
         }
 
+        $showtime = $response['data'][0];
         $capacity = (int)$showtime['capacity'];
-        $price = (float)$showtime['price'];
+        $price    = (float)$showtime['price'];
 
-        // 2. Hitung jumlah tiket yang sudah terjual untuk showtime ini (tidak menghitung yang dibatalkan)
-        $sqlSold = "SELECT COALESCE(SUM(total_tickets), 0) AS total_sold 
-                    FROM orders 
-                    WHERE showtime_id = :showtime_id AND status != 'CANCELLED'";
-        $stmtSold = $this->db->prepare($sqlSold);
-        $stmtSold->execute([':showtime_id' => $showtimeId]);
-        $soldRow = $stmtSold->fetch(PDO::FETCH_ASSOC);
-        $sold = (int)($soldRow['total_sold'] ?? 0);
+        // 2. Hitung jumlah tiket yang sudah terjual: COUNT ticket rows per showtime
+        $querySold = "SELECT COUNT(t.ticket_id) AS total_sold
+                      FROM tickets t
+                      JOIN orders o ON t.order_id = o.order_id
+                      WHERE o.showtime_id = $1";
+        $responseSold = $this->db->send_query($querySold, [(int)$showtimeId]);
+        $sold = 0;
+        if ($responseSold['success'] && !empty($responseSold['data'])) {
+            $sold = (int)$responseSold['data'][0]['total_sold'];
+        }
 
         // 3. Hitung sisa kuota kursi yang masih kosong
-        $remaining = max(0, $capacity - $sold);
+        $remaining   = max(0, $capacity - $sold);
         $isAvailable = ($remaining >= $requestedTickets);
 
         return [
@@ -206,8 +153,41 @@ class Order extends BaseModel {
             'capacity'  => $capacity,
             'sold'      => $sold,
             'price'     => $price,
-            'message'   => $isAvailable ? 'Kuota tersedia.' : "Sisa tiket tidak mencukupi (tersisa {$remaining} tiket)."
+            'message'   => $isAvailable
+                ? 'Kuota tersedia.'
+                : "Sisa tiket tidak mencukupi (tersisa {$remaining} tiket)."
         ];
+    }
+
+    /**
+     * Mengambil info jadwal tayang lengkap untuk halaman checkout (Trx-02)
+     * Data meliputi film, genre, studio, harga, dan kapasitas kursi.
+     *
+     * @param int $showtimeId ID jadwal tayang
+     * @return array|null
+     */
+    public function getShowtimeInfo($showtimeId) {
+        $query = "SELECT
+                    st.showtime_id,
+                    st.price,
+                    st.show_date,
+                    st.show_time,
+                    m.movie_id,
+                    m.title AS movie_title,
+                    m.poster AS movie_poster,
+                    m.duration AS movie_duration,
+                    g.genre_name,
+                    s.studio_name,
+                    COALESCE(s.capacity, 50) AS studio_capacity
+                  FROM showtimes st
+                  LEFT JOIN movies m ON st.movie_id = m.movie_id
+                  LEFT JOIN genres g ON m.genre_id = g.genre_id
+                  LEFT JOIN studios s ON st.studio_id = s.studio_id
+                  WHERE st.showtime_id = $1
+                  LIMIT 1";
+
+        $response = $this->db->send_query($query, [(int)$showtimeId]);
+        return ($response['success'] && !empty($response['data'])) ? $response['data'][0] : null;
     }
 
     // ==========================================
@@ -215,21 +195,17 @@ class Order extends BaseModel {
     // ==========================================
 
     /**
-     * Menyimpan data pesanan dan tiket dalam SATU TRANSAKSI DATABASE (Jobdesk Trx-01)
-     * Menggunakan beginTransaction, commit, dan rollBack agar data konsisten (tidak korup)
-     * 
-     * @param int $userId ID akun pembeli yang login
-     * @param int $showtimeId ID jadwal tayang yang dipilih
-     * @param int $quantity Jumlah tiket yang dibeli (1-6 tiket)
-     * @param array $seatNumbers Array nomor kursi pilihan (opsional)
-     * @return array Hasil transaksi: status success, order_id, booking_code, dll.
+     * Menyimpan data pesanan dan tiket dalam satu transaksi database (Jobdesk Trx-01)
+     * Menggunakan mulai_transaksi(), commit(), rollback() dari DBConnection.
+     *
+     * @param int   $userId       ID akun pembeli yang login
+     * @param int   $showtimeId   ID jadwal tayang yang dipilih
+     * @param int   $quantity     Jumlah tiket yang dibeli (1–6 tiket)
+     * @param array $seatNumbers  Array nomor kursi pilihan (opsional)
+     * @return array Hasil transaksi: order_id, booking_code, total_price, tickets
      * @throws Exception jika kuota habis atau database gagal
      */
     public function createOrderWithTickets($userId, $showtimeId, $quantity, array $seatNumbers = []) {
-        if (!$this->db) {
-            throw new Exception("Koneksi database tidak tersedia.");
-        }
-
         // Validasi batasan jumlah tiket (harus 1 sampai 6)
         if ($quantity < 1 || $quantity > 6) {
             throw new Exception("Jumlah tiket yang dapat dibeli adalah 1 sampai 6 tiket.");
@@ -238,184 +214,168 @@ class Order extends BaseModel {
         // 1. Cek sisa kuota kursi terlebih dahulu
         $quota = $this->checkQuota($showtimeId, $quantity);
         if (!$quota['available']) {
-            throw new Exception("Maaf, kuota kursi tidak mencukupi. Sisa tiket yang tersedia hanya {$quota['remaining']} lembar.");
+            throw new Exception("Maaf, kuota kursi tidak mencukupi. Sisa: {$quota['remaining']} tiket.");
         }
 
-        // 2. Hitung total harga transaksi (Harga Satuan x Jumlah Tiket)
+        // 2. Hitung total harga (Harga Satuan x Jumlah Tiket)
         $totalPrice = self::calculateTotal($quota['price'], $quantity);
-
-        // 3. Generate kode booking unik menggunakan Ticket::generateBookingCode() (Ticket-03)
-        $bookingCode = Ticket::generateBookingCode('BK');
 
         // ==========================================
         // MULAI DATABASE TRANSACTION (ATOMISITAS)
         // ==========================================
-        $this->db->beginTransaction();
+        $this->db->mulai_transaksi();
 
         try {
             // A. Simpan data transaksi ke tabel 'orders'
-            $sqlOrder = "INSERT INTO {$this->table} 
-                         (user_id, showtime_id, booking_code, total_tickets, total_price, status, created_at) 
-                         VALUES (:user_id, :showtime_id, :booking_code, :total_tickets, :total_price, :status, NOW())";
-            $stmtOrder = $this->db->prepare($sqlOrder);
-            $stmtOrder->execute([
-                ':user_id'       => $userId,
-                ':showtime_id'   => $showtimeId,
-                ':booking_code'  => $bookingCode,
-                ':total_tickets' => $quantity,
-                ':total_price'   => $totalPrice,
-                ':status'        => 'CONFIRMED'
+            // Kolom sesuai bioskop.sql: order_id(serial), user_id, showtime_id, total_price, order_date
+            $queryOrder = "INSERT INTO orders (user_id, showtime_id, total_price)
+                           VALUES ($1, $2, $3)
+                           RETURNING order_id";
+            $responseOrder = $this->db->send_query($queryOrder, [
+                (int)$userId,
+                (int)$showtimeId,
+                $totalPrice
             ]);
 
+            if (!$responseOrder['success'] || empty($responseOrder['data'])) {
+                throw new Exception("Gagal menyimpan pesanan ke database.");
+            }
+
             // Ambil ID pesanan yang baru di-generate oleh database
-            $orderId = (int)$this->db->lastInsertId();
+            $orderId = (int)$responseOrder['data'][0]['order_id'];
 
-            // B. Simpan data lembar tiket berkode unik ke tabel 'tickets' (Ticket-01)
-            $ticketModel = new Ticket($this->db);
-            $createdTickets = $ticketModel->createTicketsForOrder($orderId, $bookingCode, $quantity, $seatNumbers);
+            // Generate kode booking berbasis order_id (Ticket-03)
+            $bookingCode = Ticket::generateBookingCode($orderId);
 
-            // C. Jika kedua proses di atas berhasil tanpa hambatan, lakukan COMMIT
+            // B. Simpan lembar tiket ke tabel 'tickets' (Ticket-01)
+            $ticketModel = new Ticket();
+            $createdTickets = $ticketModel->createTicketsForOrder($orderId, $quantity, $seatNumbers);
+
+            // C. Jika semua berhasil, lakukan COMMIT
             $this->db->commit();
 
-            // Set properti objek dengan data pesanan yang baru disimpan
-            $this->id            = $orderId;
-            $this->user_id       = $userId;
-            $this->showtime_id   = $showtimeId;
-            $this->booking_code  = $bookingCode;
-            $this->total_tickets = $quantity;
-            $this->total_price   = $totalPrice;
-            $this->status        = 'CONFIRMED';
+            // Update properti objek
+            $this->order_id    = $orderId;
+            $this->user_id     = $userId;
+            $this->showtime_id = $showtimeId;
+            $this->total_price = $totalPrice;
 
             return [
-                'success'       => true,
-                'order_id'      => $orderId,
-                'booking_code'  => $bookingCode,
-                'total_tickets' => $quantity,
-                'total_price'   => $totalPrice,
-                'tickets'       => $createdTickets
+                'success'      => true,
+                'order_id'     => $orderId,
+                'booking_code' => $bookingCode,
+                'total_price'  => $totalPrice,
+                'tickets'      => $createdTickets
             ];
 
         } catch (Exception $e) {
-            // D. Jika terjadi error di tengah proses, lakukan ROLLBACK untuk membatalkan semua perubahan
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-
+            // D. Jika terjadi error, lakukan ROLLBACK untuk membatalkan semua perubahan
+            $this->db->rollback();
             throw new Exception("Gagal memproses pesanan: " . $e->getMessage());
         }
     }
 
     /**
-     * Mengambil rincian data satu pesanan (JOIN dengan showtime, movie, studio)
-     * Digunakan oleh halaman konfirmasi pesanan (confirm.php)
-     * 
-     * @param int|string $identifier ID pesanan (angka) atau kode booking (teks)
+     * Mengambil rincian data satu pesanan (JOIN dengan showtime, movie, studio, user)
+     * Digunakan oleh halaman konfirmasi pesanan (confirm.php - Trx-03)
+     *
+     * @param int $orderId ID pesanan
      * @return array|null Rincian pesanan
      */
-    public function getOrderDetail($identifier) {
-        if (!$this->db) {
-            return null;
-        }
-
-        $sql = "SELECT 
-                    o.*,
-                    m.title AS movie_title,
-                    m.poster AS movie_poster,
-                    m.duration AS movie_duration,
-                    g.name AS genre_name,
-                    s.name AS studio_name,
+    public function getOrderDetail($orderId) {
+        $query = "SELECT
+                    o.order_id,
+                    o.user_id,
+                    o.total_price,
+                    o.order_date,
+                    u.username,
+                    u.email,
                     st.show_date,
                     st.show_time,
                     st.price AS ticket_price,
-                    u.name AS customer_name,
-                    u.email AS customer_email
-                FROM orders o
-                LEFT JOIN showtimes st ON o.showtime_id = st.id
-                LEFT JOIN movies m ON st.movie_id = m.id
-                LEFT JOIN genres g ON m.genre_id = g.id
-                LEFT JOIN studios s ON st.studio_id = s.id
-                LEFT JOIN users u ON o.user_id = u.id
-                WHERE (o.id = :id_or_code OR o.booking_code = :id_or_code_str)
-                LIMIT 1";
+                    m.title AS movie_title,
+                    m.poster AS movie_poster,
+                    m.duration AS movie_duration,
+                    g.genre_name,
+                    s.studio_name
+                  FROM orders o
+                  JOIN showtimes st ON o.showtime_id = st.showtime_id
+                  JOIN movies m ON st.movie_id = m.movie_id
+                  LEFT JOIN genres g ON m.genre_id = g.genre_id
+                  JOIN studios s ON st.studio_id = s.studio_id
+                  JOIN users u ON o.user_id = u.user_id
+                  WHERE o.order_id = $1
+                  LIMIT 1";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':id_or_code'     => is_numeric($identifier) ? (int)$identifier : 0,
-            ':id_or_code_str' => (string)$identifier
-        ]);
+        $response = $this->db->send_query($query, [(int)$orderId]);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$response['success'] || empty($response['data'])) {
+            return null;
+        }
+
+        $order = $response['data'][0];
+
+        // Tambahkan kode booking yang digenerate dari order_id (Ticket-03)
+        $order['booking_code'] = Ticket::generateBookingCode($order['order_id']);
+
+        // Hitung jumlah tiket dari tabel tickets
+        $ticketModel = new Ticket();
+        $tickets = $ticketModel->getByOrderId($orderId);
+        $order['tickets']       = $tickets;
+        $order['total_tickets'] = !empty($tickets) ? count($tickets) : (
+            (float)($order['ticket_price'] ?? 0) > 0
+            ? (int)round((float)$order['total_price'] / (float)$order['ticket_price'])
+            : 1
+        );
+
+        return $order;
     }
 
     /**
      * Mengambil seluruh daftar pesanan milik akun user tertentu
      * Digunakan oleh halaman riwayat pesanan (history.php - User-03)
-     * 
+     *
      * @param int $userId ID pengguna
      * @return array Daftar riwayat pesanan
      */
     public function getByUserId($userId) {
-        if (!$this->db) {
-            return [];
-        }
-
-        $sql = "SELECT 
-                    o.*,
+        $query = "SELECT
+                    o.order_id,
+                    o.total_price,
+                    o.order_date,
                     m.title AS movie_title,
                     m.poster AS movie_poster,
-                    s.name AS studio_name,
+                    s.studio_name,
                     st.show_date,
                     st.show_time
-                FROM orders o
-                LEFT JOIN showtimes st ON o.showtime_id = st.id
-                LEFT JOIN movies m ON st.movie_id = m.id
-                LEFT JOIN studios s ON st.studio_id = s.id
-                WHERE o.user_id = :user_id
-                ORDER BY o.id DESC";
+                  FROM orders o
+                  LEFT JOIN showtimes st ON o.showtime_id = st.showtime_id
+                  LEFT JOIN movies m ON st.movie_id = m.movie_id
+                  LEFT JOIN studios s ON st.studio_id = s.studio_id
+                  WHERE o.user_id = $1
+                  ORDER BY o.order_id DESC";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':user_id' => $userId]);
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $response = $this->db->send_query($query, [(int)$userId]);
+        return ($response['success'] && !empty($response['data'])) ? $response['data'] : [];
     }
 
     /**
-     * Implementasi method abstract save() dari BaseModel
+     * Implementasi method abstract save() dari Crudable (via BaseModel)
+     * Menyimpan atau memperbarui data pesanan.
+     *
+     * @return bool
      */
-    public function save() {
-        if (!$this->db) {
-            return false;
-        }
-
-        if ($this->id) {
-            $sql = "UPDATE {$this->table} 
-                    SET status = :status, total_price = :total_price 
-                    WHERE id = :id";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([
-                ':status'      => $this->status,
-                ':total_price' => $this->total_price,
-                ':id'          => $this->id
+    public function save(): bool {
+        if ($this->order_id) {
+            return $this->update($this->order_id, [
+                'total_price' => $this->total_price
             ]);
         } else {
-            $sql = "INSERT INTO {$this->table} 
-                    (user_id, showtime_id, booking_code, total_tickets, total_price, status, created_at) 
-                    VALUES (:user_id, :showtime_id, :booking_code, :total_tickets, :total_price, :status, NOW())";
-            $stmt = $this->db->prepare($sql);
-            $success = $stmt->execute([
-                ':user_id'       => $this->user_id,
-                ':showtime_id'   => $this->showtime_id,
-                ':booking_code'  => $this->booking_code,
-                ':total_tickets' => $this->total_tickets,
-                ':total_price'   => $this->total_price,
-                ':status'        => $this->status ?? 'CONFIRMED'
+            return $this->create([
+                'user_id'     => $this->user_id,
+                'showtime_id' => $this->showtime_id,
+                'total_price' => $this->total_price
             ]);
-
-            if ($success) {
-                $this->id = (int)$this->db->lastInsertId();
-            }
-
-            return $success;
         }
     }
 }
