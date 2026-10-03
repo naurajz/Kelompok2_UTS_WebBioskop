@@ -113,16 +113,6 @@ class Genre extends BaseModel
  
         return $response['success'] && !empty($response['data']);
     }
- 
-    // SAVE
- 
-    /**
-     * Simpan genre ke database.
-     * - genre_id kosong  -> INSERT (genre baru)
-     * - genre_id terisi  -> UPDATE (ubah nama genre)
-     *
-     * @throws InvalidArgumentException jika nama kosong atau sudah dipakai
-     */
     public function save(): bool
     {
         if ($this->genre_name === null || $this->genre_name === '') {
