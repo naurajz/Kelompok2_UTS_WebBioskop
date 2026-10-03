@@ -1,14 +1,4 @@
 <?php
-/**
- * File     : admin/genre.php
- * Card     : Genre-02 Genre UI
- * Tugas    : Halaman admin kelola genre: tabel + tambah/edit/hapus.
- * PIC      : Muhammad Raihan Putra Arila
- * Deadline : 2 Oktober 2026
- */
-
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
-
 require_once __DIR__ . '/../bootstrap.php';          // memulai session + koneksi database
 require_once __DIR__ . '/auth_check.php';            // proteksi admin (card Auth-02)
 require_once __DIR__ . '/../classes/Genre.php';
