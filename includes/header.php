@@ -1,12 +1,4 @@
 <?php
-/**
- * File     : includes/header.php
- * Card     : Core-03 Layout & Navbar
- * Tugas    : Header + navbar. Menu berubah sesuai status login (belum login: Masuk/Daftar, sudah login: Riwayat/Keluar).
- * PIC      : Syahrisham Rafif Thufail
- * Deadline : 1 Oktober 2026
- */
-
 // Pastikan session sudah aktif
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
