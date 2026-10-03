@@ -1,13 +1,4 @@
 <?php
-/**
- * File     : admin/showtime.php
- * Card     : Show-02 Jadwal Tayang UI
- * Tugas    : Form admin untuk menambah jadwal. Dropdown film dan studio, input tanggal, jam, harga.
- * PIC      : [Nama PIC]
- * NIM      : [NIM]
- * Deadline : [Tanggal deadline]
- */
-
 require_once __DIR__ . '/../includes/admin_guard.php';
 
 $showtime = new Showtime();
