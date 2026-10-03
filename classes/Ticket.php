@@ -1,24 +1,6 @@
 <?php
-/**
- * File     : classes/Ticket.php
- * Card     : Ticket-01 Ticket Backend + Ticket-03 Kode Booking
- * Tugas    : Class Ticket extends BaseModel. Isi: buat tiket berkode unik per pesanan, generate kode booking.
- * PIC      : Shafrie Alvito Wimala Rasendrya
- * NIM      : 434251142
- * Deadline : 3 Oktober 2026
- */
-
 require_once __DIR__ . '/BaseModel.php';
 
-/**
- * Class Ticket mewakili tabel 'tickets' (ticket_id, order_id, seat_number).
- * Mengimplementasikan konsep OOP dasar sesuai modul perkuliahan:
- * - Inheritance dari BaseModel (menggunakan koneksi DBConnection PostgreSQL)
- * - Encapsulation (properti private dengan getter dan setter)
- * - Static method untuk generate kode booking unik (Ticket-03)
- * - Magic method __toString()
- * - Mendukung fleksibilitas pemanggilan dari Order.php
- */
 class Ticket extends BaseModel
 {
     // Property sesuai kolom tabel 'tickets' di database/bioskop.sql
