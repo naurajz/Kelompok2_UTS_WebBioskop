@@ -1,24 +1,10 @@
 <?php
-/**
- * File     : classes/Order.php
- * Card     : Trx-01 Order & CO Backend
- * Tugas    : Class Order extends BaseModel. Isi: cek sisa kuota, hitung total,
- *            simpan order + tiket dalam satu transaksi database.
- * PIC      : Davientyo Arifius Putra
- * NIM      : 434251115
- * Deadline : 3 Oktober 2026
- */
 
 // Panggil file class induk dan class Ticket untuk pembuatan tiket
 require_once __DIR__ . '/BaseModel.php';
 require_once __DIR__ . '/Ticket.php';
 
-/**
- * Class Order
- * Mengelola transaksi pesanan tiket, pengecekan sisa kuota studio,
- * kalkulasi total harga, dan penyimpanan atomik antara tabel orders dan tickets.
- * Menggunakan koneksi DBConnection PostgreSQL via BaseModel.
- */
+
 class Order extends BaseModel {
 
     // Properti sesuai kolom tabel orders di database/bioskop.sql
