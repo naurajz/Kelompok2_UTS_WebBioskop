@@ -1,8 +1,3 @@
--- File     : database/bioskop.sql
--- Card     : DB-02 Implementasi Database
--- Tugas    : CREATE TABLE users, genres, movies, studios, showtimes, orders, tickets
--- PIC      : (isi nama)
--- Deadline : 1 Oktober 2026
 
 CREATE table users (
 	user_id serial primary key,
