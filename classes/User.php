@@ -8,7 +8,7 @@
  * Deadline : 1 Oktober 2026
  */
 
-class User
+class User extends BaseModel
 {
     private int $user_id;
     private string $username;
