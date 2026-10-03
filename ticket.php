@@ -1,12 +1,6 @@
 <?php
-/**
- * File     : ticket.php
- * Card     : Ticket-02 Ticket UI
- * Tugas    : E-ticket: film, jam, studio, jumlah tiket, kode booking.
- * PIC      : Shafrie Alvito Wimala Rasendrya
- * NIM      : 434251142
- * Deadline : 3 Oktober 2026
- */
+// ticket.php - halaman e-tiket setelah pemesanan selesai
+// dibuat oleh Shafrie Alvito Wimala Rasendrya (434251142)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -14,7 +8,10 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/classes/Ticket.php';
 
+// ambil order_id dari URL
 $orderId = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
+
+// kalau order_id gak ada, coba dari parameter 'code' (jaga-jaga)
 if ($orderId <= 0 && isset($_GET['code'])) {
     $orderId = (int)preg_replace('/[^0-9]/', '', $_GET['code']);
 }
@@ -23,6 +20,7 @@ if ($orderId <= 0) {
     exit;
 }
 
+// ambil data tiket dari database, pakai try-catch biar gak error fatal
 try {
     $ticketModel = new Ticket();
     $ticketData  = $ticketModel->getOrderTicketDetails($orderId);
@@ -34,7 +32,8 @@ if (!$ticketData) {
     exit;
 }
 
-// Hanya pemilik yang boleh akses (kecuali admin)
+// cek apakah user yang buka adalah pemilik tiket ini
+// admin bisa akses semua, user biasa cuma punyanya sendiri
 $sessionUserId = $_SESSION['user_id'] ?? null;
 $sessionRole   = $_SESSION['role'] ?? 'customer';
 if ($sessionUserId && isset($ticketData['user_id']) && $sessionRole !== 'admin') {
@@ -53,10 +52,6 @@ if ($sessionUserId && isset($ticketData['user_id']) && $sessionRole !== 'admin')
 
 <style>
 
-/* =====================================================
-   RESET
-===================================================== */
-
 * {
     margin: 0;
     padding: 0;
@@ -74,10 +69,6 @@ a {
     color: inherit;
 }
 
-
-/* =====================================================
-   NAVBAR
-===================================================== */
 
 .navbar {
     position: fixed;
@@ -119,10 +110,6 @@ a {
 }
 
 
-/* =====================================================
-   PAGE WRAPPER
-===================================================== */
-
 .page-wrap {
     margin-top: 72px;
     padding: 60px 7%;
@@ -136,6 +123,7 @@ a {
     width: 100%;
     max-width: 600px;
 }
+
 
 .nav-area {
     display: flex;
@@ -154,6 +142,7 @@ a {
     color: #e50914;
 }
 
+
 .btn-cetak {
     background: #1a1a1a;
     border: 1px solid #333;
@@ -166,16 +155,13 @@ a {
 }
 
 
-/* =====================================================
-   TICKET CARD
-===================================================== */
-
 .ticket-card {
     background: #121212;
     border: 1px solid #252525;
     border-radius: 14px;
     overflow: hidden;
 }
+
 
 .ticket-header {
     background: #0e0e0e;
@@ -196,6 +182,7 @@ a {
     color: #e50914;
 }
 
+
 .ticket-badge {
     background: #1c3520;
     color: #4caf50;
@@ -212,7 +199,7 @@ a {
     padding: 28px;
 }
 
-/* Kode booking */
+
 .booking-box {
     background: #0a0a0a;
     border: 1px dashed #e50914;
@@ -230,6 +217,7 @@ a {
     margin-bottom: 10px;
 }
 
+
 .booking-code {
     font-family: 'Courier New', Courier, monospace;
     font-size: 2.4rem;
@@ -238,7 +226,7 @@ a {
     letter-spacing: 6px;
 }
 
-/* Tabel rincian */
+
 .detail-table {
     width: 100%;
     border-collapse: collapse;
@@ -270,15 +258,12 @@ a {
 }
 
 
-/* =====================================================
-   TICKET DIVIDER
-===================================================== */
-
 .ticket-divider {
     position: relative;
     height: 28px;
     margin: 0;
 }
+
 
 .ticket-divider::before,
 .ticket-divider::after {
@@ -305,10 +290,6 @@ a {
 }
 
 
-/* =====================================================
-   TICKET FOOTER
-===================================================== */
-
 .ticket-footer {
     background: #0a0a0a;
     padding: 14px 28px;
@@ -330,26 +311,19 @@ a {
 </head>
 <body>
 
-
-<!-- NAVBAR -->
 <nav class="navbar">
-
     <div class="logo">
         HIMTI
         <span>MOVIE</span>
     </div>
-
     <div class="nav-menu">
         <a href="index.php">Home</a>
         <a href="index.php#movies">Movies</a>
         <a href="history.php">Pesanan Saya</a>
         <a href="logout.php" style="background:#e50914;padding:10px 20px;border-radius:7px;color:white;">Keluar</a>
     </div>
-
 </nav>
 
-
-<!-- PAGE CONTENT -->
 <div class="page-wrap">
     <div class="ticket-wrap">
 
@@ -364,7 +338,6 @@ a {
 
         <div class="ticket-card">
 
-            <!-- Header kartu tiket -->
             <div class="ticket-header">
                 <div class="ticket-brand">
                     HIMTI <span>MOVIE</span>
@@ -374,13 +347,13 @@ a {
 
             <div class="ticket-body">
 
-                <!-- Kode Booking -->
+                <!-- kode unik per pesanan, wajib tunjuk ke petugas -->
                 <div class="booking-box">
                     <div class="booking-label">Kode Booking</div>
                     <div class="booking-code"><?= htmlspecialchars($ticketData['booking_code']) ?></div>
                 </div>
 
-                <!-- Rincian Tiket -->
+                <!-- detail lengkap film dan waktu tayang -->
                 <table class="detail-table">
                     <tr>
                         <td class="lbl">Judul Film</td>
@@ -411,6 +384,7 @@ a {
                         <td class="lbl">Nomor Kursi</td>
                         <td class="val">
                             <?php
+                                // gabungin semua nomor kursi jadi satu string
                                 $seats = array_map(function($t) { return $t['seat_number']; }, $ticketData['tickets']);
                                 echo htmlspecialchars(implode(', ', $seats));
                             ?>
@@ -431,12 +405,11 @@ a {
 
             </div>
 
-            <!-- Divider berlubang khas tiket -->
+            <!-- garis putus-putus dengan efek lubang, kaya tiket fisik -->
             <div class="ticket-divider">
                 <div class="ticket-divider-line"></div>
             </div>
 
-            <!-- Footer tiket -->
             <div class="ticket-footer">
                 Tunjukkan kode booking ini kepada petugas bioskop saat memasuki studio.
             </div>

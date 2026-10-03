@@ -1,23 +1,19 @@
 <?php
-/**
- * File     : checkout.php
- * Card     : Trx-02 Checkout UI
- * Tugas    : Pilih jumlah tiket (1-6), total harga. Wajib login. Data pemesan dari session.
- * PIC      : Davientyo Arifius Putra
- * NIM      : 434251115
- * Deadline : 3 Oktober 2026
- */
+// checkout.php - halaman beli tiket
+// dibuat oleh Davientyo Arifius Putra (434251115)
 
+// mulai session biar bisa akses data login user
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Wajib login (Trx-02)
+// kalau belum login, lempar ke halaman login dulu
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
+// ambil showtime_id dari URL, kalau gak ada langsung stop
 $showtimeId = (int)($_GET['showtime_id'] ?? $_POST['showtime_id'] ?? 0);
 if ($showtimeId <= 0) {
     exit;
@@ -25,27 +21,37 @@ if ($showtimeId <= 0) {
 
 require_once __DIR__ . '/classes/Order.php';
 
+// data user yang lagi login (dari session)
 $currentUserId    = (int)$_SESSION['user_id'];
 $currentUserName  = $_SESSION['username'] ?? 'Pengguna';
 $currentUserEmail = $_SESSION['email'] ?? '';
 
+// buat objek Order, lalu ambil info jadwal tayangnya
 $orderModel = new Order();
 $showtime   = $orderModel->getShowtimeInfo($showtimeId);
 
+// kalau jadwal gak ketemu di database, stop
 if (!$showtime) {
     exit;
 }
 
+// cek sisa kursi dan harga tiket
 $quotaInfo     = $orderModel->checkQuota($showtimeId, 1);
 $ticketPrice   = (float)($showtime['price'] ?? 50000);
 $maxSelectable = $quotaInfo ? min(6, (int)$quotaInfo['remaining']) : 6;
 
+// proses kalau user klik tombol pesan
 $checkoutError = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_checkout'])) {
     $quantity = (int)($_POST['quantity'] ?? 1);
+
+    // validasi jumlah tiket, maksimal 6
     if ($quantity >= 1 && $quantity <= 6) {
         try {
+            // buat order + tiket di database
             $result = $orderModel->createOrderWithTickets($currentUserId, $showtimeId, $quantity);
+
+            // kalau berhasil, redirect ke halaman konfirmasi
             if ($result && isset($result['order_id'])) {
                 header("Location: confirm.php?order_id=" . $result['order_id']);
                 exit;
@@ -66,10 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['btn_checkout'])) {
 
 <style>
 
-/* =====================================================
-   RESET
-===================================================== */
-
 * {
     margin: 0;
     padding: 0;
@@ -87,11 +89,7 @@ a {
     color: inherit;
 }
 
-
-/* =====================================================
-   NAVBAR
-===================================================== */
-
+/* navbar */
 .navbar {
     position: fixed;
     top: 0;
@@ -131,11 +129,7 @@ a {
     color: #e50914;
 }
 
-
-/* =====================================================
-   PAGE WRAPPER
-===================================================== */
-
+/* area konten utama, kasih jarak dari navbar */
 .page-wrap {
     margin-top: 72px;
     padding: 60px 7%;
@@ -164,11 +158,7 @@ a {
     color: #e50914;
 }
 
-
-/* =====================================================
-   GRID
-===================================================== */
-
+/* layout dua kolom: kiri info film, kanan form pesan */
 .checkout-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -176,17 +166,14 @@ a {
     max-width: 900px;
 }
 
+/* di hp jadi satu kolom */
 @media (max-width: 700px) {
     .checkout-grid { grid-template-columns: 1fr; }
     .navbar { padding: 0 20px; }
     .page-wrap { padding: 50px 5%; }
 }
 
-
-/* =====================================================
-   CARD
-===================================================== */
-
+/* card gelap buat tiap bagian */
 .card {
     background: #121212;
     border: 1px solid #252525;
@@ -223,6 +210,7 @@ a {
     margin-bottom: 18px;
 }
 
+/* tabel info film */
 .info-table {
     width: 100%;
     border-collapse: collapse;
@@ -248,6 +236,7 @@ a {
     color: #e50914;
 }
 
+/* badge sisa kursi */
 .seat-badge {
     font-size: 12px;
     padding: 3px 9px;
@@ -258,11 +247,7 @@ a {
 .seat-ok  { background: #122212; color: #4caf50; }
 .seat-no  { background: #2d0707; color: #f44; }
 
-
-/* =====================================================
-   FORM
-===================================================== */
-
+/* form input yang read-only (nama & email dari session) */
 .field-label {
     color: #888;
     font-size: 12px;
@@ -288,6 +273,7 @@ a {
     opacity: .7;
 }
 
+/* pilihan jumlah tiket 1-6 */
 .qty-label {
     color: #888;
     font-size: 12px;
@@ -317,6 +303,7 @@ a {
     font-family: Arial, Helvetica, sans-serif;
 }
 
+/* tombol aktif / hover jadi merah */
 .qty-btn.active,
 .qty-btn:not(:disabled):hover {
     background: #e50914;
@@ -324,11 +311,13 @@ a {
     color: #fff;
 }
 
+/* tombol nonaktif (kursi sudah habis) */
 .qty-btn:disabled {
     opacity: .3;
     cursor: not-allowed;
 }
 
+/* kotak ringkasan harga */
 .price-box {
     background: #0e0e0e;
     border: 1px solid #222;
@@ -376,6 +365,7 @@ a {
     background: #c1070f;
 }
 
+/* kotak error kalau gagal order */
 .error-box {
     background: #2d0707;
     border: 1px solid #7a1010;
@@ -390,26 +380,19 @@ a {
 </head>
 <body>
 
-
-<!-- NAVBAR -->
 <nav class="navbar">
-
     <div class="logo">
         HIMTI
         <span>MOVIE</span>
     </div>
-
     <div class="nav-menu">
         <a href="index.php">Home</a>
         <a href="index.php#movies">Movies</a>
         <a href="history.php">Pesanan Saya</a>
         <a href="logout.php" style="background:#e50914;padding:10px 20px;border-radius:7px;color:white;">Keluar</a>
     </div>
-
 </nav>
 
-
-<!-- PAGE CONTENT -->
 <div class="page-wrap">
 
     <a href="javascript:history.back()" class="back-link">&#8592; Kembali</a>
@@ -422,7 +405,7 @@ a {
 
     <div class="checkout-grid">
 
-        <!-- Info Film -->
+        <!-- kartu kiri: info film dan jadwal -->
         <div class="card">
             <div class="card-title">Info Film</div>
 
@@ -468,12 +451,14 @@ a {
             </table>
         </div>
 
-        <!-- Form Pemesanan -->
+        <!-- kartu kanan: form pemesanan -->
         <div class="card">
             <div class="card-title">Rincian Pemesanan</div>
 
             <form method="POST" action="checkout.php?showtime_id=<?= $showtimeId ?>">
+                <!-- showtime_id disimpan di hidden field biar ikut ke POST -->
                 <input type="hidden" name="showtime_id" value="<?= $showtimeId ?>">
+                <!-- quantity diisi lewat JS saat user klik tombol angka -->
                 <input type="hidden" name="quantity" id="inputQuantity" value="1">
 
                 <div class="field-label">Nama Pemesan</div>
@@ -494,6 +479,7 @@ a {
                     <?php endfor; ?>
                 </div>
 
+                <!-- ringkasan harga, diupdate real-time via JS -->
                 <div class="price-box">
                     <div class="price-row">
                         <span class="price-lbl">Harga / Tiket</span>
@@ -520,16 +506,21 @@ a {
 </div>
 
 <script>
-    const unitPrice  = <?= $ticketPrice ?>;
-    const inputQty   = document.getElementById('inputQuantity');
-    const displayQty = document.getElementById('displayQty');
+    // harga per tiket dari PHP, biar JS bisa hitung totalnya
+    const unitPrice    = <?= $ticketPrice ?>;
+    const inputQty     = document.getElementById('inputQuantity');
+    const displayQty   = document.getElementById('displayQty');
     const displayTotal = document.getElementById('displayTotal');
 
+    // setiap tombol angka diklik, update tampilan harga dan isi hidden input
     document.querySelectorAll('.qty-btn').forEach(btn => {
         btn.addEventListener('click', function () {
             if (this.disabled) return;
+
+            // hapus active dari semua tombol, lalu tandai yang diklik
             document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
+
             const qty = parseInt(this.getAttribute('data-qty'), 10);
             inputQty.value = qty;
             displayQty.textContent = qty + ' Tiket';

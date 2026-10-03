@@ -1,17 +1,12 @@
 <?php
-/**
- * File     : confirm.php
- * Card     : Trx-03 Konfirmasi Pesanan
- * Tugas    : Ringkasan pesanan + kode booking setelah checkout berhasil.
- * PIC      : Davientyo Arifius Putra
- * NIM      : 434251115
- * Deadline : 3 Oktober 2026
- */
+// confirm.php - halaman konfirmasi setelah checkout berhasil
+// dibuat oleh Davientyo Arifius Putra (434251115)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// ambil order_id dari URL
 $orderId = (int)($_GET['order_id'] ?? 0);
 if ($orderId <= 0) {
     exit;
@@ -19,14 +14,17 @@ if ($orderId <= 0) {
 
 require_once __DIR__ . '/classes/Order.php';
 
+// ambil detail pesanan dari database
 $orderModel = new Order();
 $order      = $orderModel->getOrderDetail($orderId);
 
+// kalau order gak ada, stop
 if (!$order) {
     exit;
 }
 
-// Hanya pemilik pesanan atau admin yang boleh akses
+// pastiin yang buka halaman ini adalah pemilik pesanannya
+// admin boleh akses semua, tapi user biasa cuma boleh lihat punyanya sendiri
 $currentUserId   = $_SESSION['user_id'] ?? null;
 $currentUserRole = $_SESSION['role'] ?? 'customer';
 if ($currentUserId && isset($order['user_id']) && $currentUserRole !== 'admin') {
@@ -45,10 +43,6 @@ if ($currentUserId && isset($order['user_id']) && $currentUserRole !== 'admin') 
 
 <style>
 
-/* =====================================================
-   RESET
-===================================================== */
-
 * {
     margin: 0;
     padding: 0;
@@ -66,11 +60,7 @@ a {
     color: inherit;
 }
 
-
-/* =====================================================
-   NAVBAR
-===================================================== */
-
+/* navbar sama persis kayak halaman lain */
 .navbar {
     position: fixed;
     top: 0;
@@ -110,11 +100,7 @@ a {
     color: #e50914;
 }
 
-
-/* =====================================================
-   PAGE WRAPPER
-===================================================== */
-
+/* konten ditaruh di tengah, max lebar 560px */
 .page-wrap {
     margin-top: 72px;
     padding: 60px 7%;
@@ -139,11 +125,7 @@ a {
     color: #e50914;
 }
 
-
-/* =====================================================
-   SUCCESS ICON
-===================================================== */
-
+/* ikon centang hijau di atas */
 .success-icon {
     width: 64px;
     height: 64px;
@@ -172,11 +154,7 @@ a {
     margin-bottom: 32px;
 }
 
-
-/* =====================================================
-   BOOKING CODE
-===================================================== */
-
+/* kotak kode booking dengan border putus merah */
 .booking-card {
     background: #0e0e0e;
     border: 1px dashed #e50914;
@@ -194,6 +172,7 @@ a {
     margin-bottom: 10px;
 }
 
+/* kode booking pakai font monospace biar keliatan kaya kode tiket beneran */
 .booking-code {
     font-family: 'Courier New', Courier, monospace;
     font-size: 2.2rem;
@@ -220,11 +199,7 @@ a {
     color: #ddd;
 }
 
-
-/* =====================================================
-   SUMMARY
-===================================================== */
-
+/* kartu rincian pesanan */
 .summary-card {
     background: #121212;
     border: 1px solid #252525;
@@ -242,6 +217,7 @@ a {
     margin-bottom: 16px;
 }
 
+/* tiap baris rincian pake flex buat rata kanan-kiri */
 .summary-row {
     display: flex;
     justify-content: space-between;
@@ -259,11 +235,7 @@ a {
 .summary-val { font-weight: 600; }
 .summary-total { color: #e50914; font-size: 16px; font-weight: 700; }
 
-
-/* =====================================================
-   ACTION BUTTONS
-===================================================== */
-
+/* tombol aksi */
 .btn-primary {
     display: block;
     width: 100%;
@@ -286,6 +258,7 @@ a {
     color: #fff;
 }
 
+/* dua tombol sekunder berdampingan */
 .btn-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -321,36 +294,30 @@ a {
 </head>
 <body>
 
-
-<!-- NAVBAR -->
 <nav class="navbar">
-
     <div class="logo">
         HIMTI
         <span>MOVIE</span>
     </div>
-
     <div class="nav-menu">
         <a href="index.php">Home</a>
         <a href="index.php#movies">Movies</a>
         <a href="history.php">Pesanan Saya</a>
         <a href="logout.php" style="background:#e50914;padding:10px 20px;border-radius:7px;color:white;">Keluar</a>
     </div>
-
 </nav>
 
-
-<!-- PAGE CONTENT -->
 <div class="page-wrap">
     <div class="confirm-box">
 
         <h2 class="page-title">Konfirmasi <span>Pesanan</span></h2>
 
+        <!-- notifikasi berhasil -->
         <div class="success-icon">&#10003;</div>
         <div class="success-heading">Pesanan Berhasil!</div>
-        <div class="success-sub">Tiket bioskop Anda telah berhasil dipesan.</div>
+        <div class="success-sub">Tiket bioskop kamu sudah berhasil dipesan.</div>
 
-        <!-- Kode Booking (Trx-03) -->
+        <!-- kode booking yang bisa disalin -->
         <div class="booking-card">
             <div class="booking-label">Kode Booking</div>
             <div class="booking-code" id="bookingCode">
@@ -359,7 +326,7 @@ a {
             <button type="button" class="btn-copy" onclick="salinKode()">Salin Kode</button>
         </div>
 
-        <!-- Rincian Pesanan (Trx-03) -->
+        <!-- ringkasan detail pesanan -->
         <div class="summary-card">
             <div class="summary-card-title">Rincian Pesanan</div>
 
@@ -391,7 +358,7 @@ a {
             </div>
         </div>
 
-        <!-- Tombol Aksi -->
+        <!-- tombol navigasi setelah selesai -->
         <a href="ticket.php?order_id=<?= $order['order_id'] ?>" class="btn-primary">
             Lihat E-Tiket
         </a>
@@ -404,11 +371,13 @@ a {
 </div>
 
 <script>
+    // fungsi salin kode booking ke clipboard
     function salinKode() {
         const kode = document.getElementById('bookingCode').innerText.trim();
         navigator.clipboard.writeText(kode).then(function() {
             alert('Kode booking disalin: ' + kode);
         }).catch(function() {
+            // fallback kalau clipboard API gak jalan
             alert('Kode booking: ' + kode);
         });
     }
