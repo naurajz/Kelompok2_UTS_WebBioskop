@@ -54,3 +54,4 @@ if (empty($username) || empty($email) || empty($password) || empty($confirm) || 
 // Jika ada error atau gagal, kembali ke form register
 header("Location: register.php");
 exit;
+
