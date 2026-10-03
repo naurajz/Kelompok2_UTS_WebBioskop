@@ -13,27 +13,22 @@ abstract class BaseModel implements Crudable {
         $this->primaryKey = $primaryKey;
     }
 
-    /**
-     * 1. Read: Mengambil seluruh data dari tabel
-     */
+     // 1. Read: Mengambil seluruh data dari tabel
     public function getAll(): array {
         $query = "SELECT * FROM " . $this->table;
         $response = $this->db->send_query($query);
         return $response['success'] ? $response['data'] : [];
     }
 
-    /**
-     * 2. Read: Mengambil data spesifik berdasarkan Primary Key (ID)
-     */
+    //2. Read: Mengambil data spesifik berdasarkan Primary Key (ID)
     public function getById($id) {
         $query = "SELECT * FROM " . $this->table . " WHERE " . $this->primaryKey . " = $1";
         $response = $this->db->send_query($query, [$id]);
         return ($response['success'] && !empty($response['data'])) ? $response['data'][0] : null;
     }
 
-    /**
-     * 3. Create: Menambah data baru ke tabel menggunakan implode()
-     */
+    
+     //Create: Menambah data baru ke tabel menggunakan implode()
     public function create(array $data): bool {
         $columns = implode(", ", array_keys($data));
         $placeholders = [];

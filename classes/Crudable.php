@@ -14,5 +14,6 @@ interface Crudable {
 
     // 5. Delete: Menghapus data berdasarkan ID
     public function delete($id): bool;
+    
 }
 ?>
