@@ -1,12 +1,4 @@
 <?php
-/**
- * File     : admin/movie.php
- * Card     : Movie-02 Film UI
- * Tugas    : Halaman admin kelola film: tabel + form + upload poster.
- * PIC      : (Zayyan Ahmad Dzaki W)
- * Deadline : 2 Oktober 2026
- */
-
 require_once __DIR__ . '/../classes/Movie.php';
 require_once __DIR__ . '/../classes/Genre.php';
 
