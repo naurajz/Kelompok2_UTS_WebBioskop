@@ -3,7 +3,7 @@
  * File     : admin/movie.php
  * Card     : Movie-02 Film UI
  * Tugas    : Halaman admin kelola film: tabel + form + upload poster.
- * PIC      : (Zayyan Ahmad Dzaki W)
+ * PIC      : (Zayyan Ahmad Dzaki Wi)
  * Deadline : 2 Oktober 2026
  */
 
