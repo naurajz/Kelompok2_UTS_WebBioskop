@@ -11,7 +11,6 @@ class Role
         $this->nama_role = $nama_role;
         $this->status = $status;
     }
-
     public function get_data(): array
     {
         return ['idrole' => $this->idrole, 'nama_role' => $this->nama_role, 'status' => $this->status];
