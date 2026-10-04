@@ -112,8 +112,13 @@ $role = $_SESSION['role'] ?? 'customer';
 <!-- Navbar Utama -->
 <nav class="navbar navbar-expand-lg navbar-dark site-navbar sticky-top shadow-sm">
     <div class="container">
+<<<<<<< HEAD
         <a class="navbar-brand" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
             <i class="bi bi-film me-2"></i>Cinema XXI / Bioskop
+=======
+        <a class="navbar-brand text-warning" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
+            <i class="bi bi-film me-2"></i> HIMTI MOVIES
+>>>>>>> 55daa47becc40f5903d6f3a88621720e1d2980c3
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -155,7 +160,7 @@ $role = $_SESSION['role'] ?? 'customer';
                         <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
                             <li><h6 class="dropdown-header">Masuk sebagai: <?= htmlspecialchars($username) ?></h6></li>
                             <?php if ($role === 'admin'): ?>
-                                <li><a class="dropdown-item" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/genre.php"><i class="bi bi-gear me-2"></i>Kelola Bioskop (Admin)</a></li>
+                                <li><a class="dropdown-item" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/dashboard_admin.php"><i class="bi bi-gear me-2"></i>Kelola Bioskop (Admin)</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <?php endif; ?>
                             <li>
