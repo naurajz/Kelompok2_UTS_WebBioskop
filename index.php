@@ -1310,7 +1310,7 @@ section.content-section {
             <a href="./logout.php" class="nav-button">Logout</a>
         <?php else: ?>
             <a href="register.php" class="nav-button">Register</a>
-            <a href="/Kelompok2_UTS-main/login.php" class="nav-button" style="position:relative;z-index:999999;pointer-events:auto;cursor:pointer;" onclick="window.location.href='/Kelompok2_UTS-main/login.php'; return false;">Login</a>
+            <a href="./login.php" class="nav-button">Login</a>
         <?php endif; ?>
 
     </div>
@@ -1690,7 +1690,7 @@ section.content-section {
         </p>
         <div class="login-required-actions">
             <a
-                href="/Kelompok2_UTS-main/login.php"
+                href="./login.php"
                 class="login-required-login"
                 onclick="saveAndGoToLogin(); return false;"
             >
