@@ -1,27 +1,22 @@
 <?php
-// index.php - halaman utama katalog film & jadwal tayang bioskop
 
-// mulai session kalau belum jalan, biar bisa cek status user login
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// cek status login dari session user_id
 $isLoggedIn = isset($_SESSION['user_id']);
-// cek apakah yang login punya hak akses admin
 $isAdmin = $isLoggedIn && ($_SESSION['role'] ?? '') === 'admin';
 
-// koneksi ke database postgresql di localhost
 $conn = pg_connect(
     "host=localhost port=5432 dbname=bioskop user=postgres password=12345678"
 );
 
-// kalau koneksi database gagal, hentikan proses
 if (!$conn) {
     die("Database connection failed.");
 }
 
-// ambil data semua film beserta genre dari tabel movies dan genres
+/* Di sini kita mengambil data film dari database supaya film bisa tampil di halaman utama. */
+
 $movieResult = pg_query($conn, "
     SELECT
         m.movie_id,
@@ -35,15 +30,12 @@ $movieResult = pg_query($conn, "
     ORDER BY m.movie_id ASC
 ");
 
-// kalau query film gagal, langsung stop dan tampilkan pesan error
 if (!$movieResult) {
     die("Movie query failed: " . pg_last_error($conn));
 }
 
-// wadah array untuk nyimpen daftar film
 $movies = [];
 
-// ambil baris data film satu per satu lalu masukkan ke array
 while ($row = pg_fetch_assoc($movieResult)) {
     $movies[] = [
         "movie_id" => $row["movie_id"],
@@ -54,7 +46,8 @@ while ($row = pg_fetch_assoc($movieResult)) {
     ];
 }
 
-// ambil daftar genre unik buat tombol filter kategori film
+/* Di sini kita mengambil daftar genre agar film bisa difilter berdasarkan genre. */
+
 $genreResult = pg_query($conn, "
     SELECT
         MIN(genre_id) AS genre_id,
@@ -64,20 +57,18 @@ $genreResult = pg_query($conn, "
     ORDER BY genre_name
 ");
 
-// kalau query genre gagal, hentikan proses
 if (!$genreResult) {
     die("Genre query failed: " . pg_last_error($conn));
 }
 
-// wadah array untuk genre
 $genres = [];
 
-// masukkan tiap genre ke array
 while ($genre = pg_fetch_assoc($genreResult)) {
     $genres[] = $genre;
 }
 
-// ambil data jadwal tayang yang digabung sama film dan studio
+/* Di sini kita mengambil jadwal tayang dan nama studio dari database. */
+
 $showtimeResult = pg_query($conn, "
     SELECT
         s.showtime_id,
@@ -97,12 +88,12 @@ $showtimeResult = pg_query($conn, "
         s.show_time ASC
 ");
 
-// kalau query jadwal gagal, hentikan proses
 if (!$showtimeResult) {
     die("Showtime query failed: " . pg_last_error($conn));
 }
 
-// daftar poster film default resolusi tinggi
+/* Di sini kita menentukan poster film dan gambar cadangan kalau poster utama tidak tersedia. */
+
 $posters = [
     "Avengers: Endgame" =>
         "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
@@ -123,11 +114,11 @@ $posters = [
         "https://image.tmdb.org/t/p/w500/wVYREutTvI2tmxr6ujrHT704wGF.jpg"
 ];
 
-// poster cadangan kalau poster film belum tersedia
 $fallback =
     "https://via.placeholder.com/500x750/151515/ffffff?text=HIMTI+MOVIE";
 
-// simpan seluruh jadwal tayang yang sudah rapi ke array
+/* Di sini data jadwal tayang dikirim dari PHP ke JavaScript supaya jadwal bisa ditampilkan secara dinamis. */
+
 $showtimeData = [];
 
 while ($row = pg_fetch_assoc($showtimeResult)) {
@@ -142,7 +133,8 @@ while ($row = pg_fetch_assoc($showtimeResult)) {
     ];
 }
 
-// generate daftar tanggal 7 hari ke depan mulai 5 okt 2026
+/* Di sini kita menyiapkan tujuh tanggal tayang mulai 5 Oktober 2026. */
+
 $dates = [];
 
 $startDate = new DateTime("2026-10-05");
@@ -153,31 +145,30 @@ for ($i = 0; $i < 7; $i++) {
     $dates[] = $date->format("Y-m-d");
 }
 
-// helper buat format singkatan nama hari (misal: MON, TUE)
+/* Di sini kita menyiapkan fungsi untuk membuat format tanggal lebih mudah dibaca. */
+
 function dayName($date)
 {
     return strtoupper(date("D", strtotime($date)));
 }
 
-// helper buat format singkatan bulan (misal: OCT)
 function monthName($date)
 {
     return strtoupper(date("M", strtotime($date)));
 }
 
-// helper buat ambil angka tanggal (misal: 05, 06)
 function dayNumber($date)
 {
     return date("d", strtotime($date));
 }
 
-// helper buat format tanggal lengkap (misal: Monday, October 05, 2026)
 function fullDate($date)
 {
     return date("l, F d, Y", strtotime($date));
 }
 
-// cek apakah tanggal masuk kategori WEEKEND atau WEEKDAY
+/* Di sini kita menentukan apakah harinya weekday atau weekend sekaligus menentukan harga tiketnya. */
+
 function dayType($date)
 {
     $day = (int) date("N", strtotime($date));
@@ -189,7 +180,6 @@ function dayType($date)
     return "WEEKDAY";
 }
 
-// hitung harga tiket: weekend 45rb, weekday 35rb
 function ticketPrice($date)
 {
     $day = (int) date("N", strtotime($date));
@@ -200,6 +190,23 @@ function ticketPrice($date)
 
     return 35000;
 }
+
+/* Di sini kita mengecek apakah pengguna yang masuk adalah admin supaya menu admin bisa ditampilkan. */
+
+$adminDashboard = $isAdmin && isset($_GET['admin_dashboard']);
+
+if ($adminDashboard) {
+    $countMoviesResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.movies");
+    $countGenresResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.genres");
+    $countShowtimesResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.showtimes");
+    $countOrdersResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.orders");
+
+    $totalMovies = (int) (pg_fetch_assoc($countMoviesResult)['total'] ?? 0);
+    $totalGenres = (int) (pg_fetch_assoc($countGenresResult)['total'] ?? 0);
+    $totalShowtimes = (int) (pg_fetch_assoc($countShowtimesResult)['total'] ?? 0);
+    $totalOrders = (int) (pg_fetch_assoc($countOrdersResult)['total'] ?? 0);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -236,6 +243,7 @@ a {
     color: inherit;
 }
 
+/* Di sini kita mengatur menu utama dan tombol akun sesuai status login pengguna. */
 
 .navbar {
     position: fixed;
@@ -318,6 +326,7 @@ a {
     cursor: pointer;
 }
 
+/* Di sini kita menampilkan bagian pembuka website beserta nama dan deskripsi singkat HIMTI Movie. */
 
 .hero {
     margin-top: 72px;
@@ -390,6 +399,7 @@ a {
     font-size: 12px;
 }
 
+/* Bagian ini mengatur tampilan umum untuk section di halaman. */
 
 section.content-section {
     padding: 70px 7%;
@@ -405,6 +415,7 @@ section.content-section {
     color: #e50914;
 }
 
+/* Di sini kita menampilkan film-film yang tersedia dan menyediakan filter berdasarkan genre. */
 
 .genre-filter {
     display: flex;
@@ -485,6 +496,7 @@ section.content-section {
     font-weight: bold;
 }
 
+/* Bagian ini mengatur tampilan section jadwal tayang. */
 
 .showtimes-section {
     background:
@@ -515,6 +527,7 @@ section.content-section {
     margin-top: 10px;
 }
 
+/* Bagian ini mengatur tampilan pilihan tanggal tayang. */
 
 .calendar {
     display: flex;
@@ -616,6 +629,7 @@ section.content-section {
     color: white;
 }
 
+/* Bagian ini mengatur tampilan informasi tanggal yang dipilih. */
 
 .selected-date-title {
     font-size: 22px;
@@ -634,6 +648,7 @@ section.content-section {
     margin-top: 8px;
 }
 
+/* Bagian ini mengatur tampilan baris jadwal untuk setiap film. */
 
 .schedule-list {
     display: flex;
@@ -682,6 +697,7 @@ section.content-section {
     gap: 12px;
 }
 
+/* Bagian ini mengatur tampilan kartu pilihan jam tayang. */
 
 .time-card {
     min-width: 135px;
@@ -751,6 +767,7 @@ section.content-section {
     font-weight: bold;
 }
 
+/* Bagian ini mengatur tampilan saat jadwal tayang belum tersedia. */
 
 .no-schedule {
     text-align: center;
@@ -760,6 +777,7 @@ section.content-section {
     border-radius: 15px;
 }
 
+/* Di sini kita memberikan penjelasan singkat tentang tujuan dan fungsi website HIMTI Movie. */
 
 .about {
     text-align: center;
@@ -774,6 +792,7 @@ section.content-section {
 }
 
 
+/* Di sini kita mengatur tampilan pop-up yang berisi detail film saat film dipilih. */
 
 .modal {
     display: none;
@@ -951,6 +970,7 @@ section.content-section {
     margin-bottom: 20px;
 }
 
+/* Bagian ini menyesuaikan tampilan website untuk berbagai ukuran layar. */
 
 @media(max-width:1200px) {
     .movie-grid {
@@ -1029,12 +1049,233 @@ section.content-section {
     }
 }
 
+
+/* Di sini kita mengatur tampilan dashboard khusus admin. */
+
+.admin-dashboard {
+    min-height: 100vh;
+    padding: 120px 7% 70px;
+    background: #080808;
+}
+
+.admin-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 35px;
+}
+
+.admin-dashboard-title {
+    font-size: 38px;
+    font-weight: 900;
+}
+
+.admin-dashboard-title span {
+    color: #e50914;
+}
+
+.admin-dashboard-subtitle {
+    color: #999;
+    margin-top: 8px;
+}
+
+.admin-dashboard-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.admin-dashboard-button {
+    display: inline-block;
+    padding: 11px 18px;
+    border-radius: 8px;
+    background: #e50914;
+    color: white;
+    font-weight: 700;
+}
+
+.admin-dashboard-button.secondary {
+    background: #1a1a1a;
+    border: 1px solid #333;
+}
+
+.admin-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 30px;
+}
+
+.admin-stat {
+    background: #121212;
+    border: 1px solid #292929;
+    border-radius: 14px;
+    padding: 25px;
+}
+
+.admin-stat-label {
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.admin-stat-number {
+    font-size: 34px;
+    font-weight: 900;
+}
+
+.admin-stat-number span {
+    color: #e50914;
+}
+
+.admin-management {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.admin-management a {
+    background: #111;
+    border: 1px solid #292929;
+    border-radius: 14px;
+    padding: 22px;
+    transition: .2s;
+}
+
+.admin-management a:hover {
+    border-color: #e50914;
+    transform: translateY(-3px);
+}
+
+.admin-management h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.admin-management p {
+    color: #888;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+@media(max-width:1000px) {
+    .admin-dashboard-grid,
+    .admin-management {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media(max-width:600px) {
+    .admin-dashboard {
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .admin-dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .admin-dashboard-grid,
+    .admin-management {
+        grid-template-columns: 1fr;
+    }
+}
+
 </style>
 
 </head>
 
 <body>
 
+<?php if ($adminDashboard): ?>
+
+    <!-- Bagian ini menampilkan dashboard admin ketika admin memilih menu dashboard. -->
+
+    <main class="admin-dashboard">
+
+        <div class="admin-dashboard-header">
+
+            <div>
+                <div class="admin-dashboard-title">
+                    Admin <span>Dashboard</span>
+                </div>
+                <div class="admin-dashboard-subtitle">
+                    Kelola data HIMTI Movie melalui menu administrasi yang tersedia.
+                </div>
+            </div>
+
+            <div class="admin-dashboard-actions">
+                <a href="index.php" class="admin-dashboard-button secondary">
+                    Kembali ke Website
+                </a>
+                <a href="logout.php" class="admin-dashboard-button">
+                    Logout
+                </a>
+            </div>
+
+        </div>
+
+        <div class="admin-dashboard-grid">
+
+            <div class="admin-stat">
+                <div class="admin-stat-label">Total Movies</div>
+                <div class="admin-stat-number">
+                    <span><?php echo $totalMovies; ?></span>
+                </div>
+            </div>
+
+            <div class="admin-stat">
+                <div class="admin-stat-label">Total Genres</div>
+                <div class="admin-stat-number">
+                    <span><?php echo $totalGenres; ?></span>
+                </div>
+            </div>
+
+            <div class="admin-stat">
+                <div class="admin-stat-label">Total Showtimes</div>
+                <div class="admin-stat-number">
+                    <span><?php echo $totalShowtimes; ?></span>
+                </div>
+            </div>
+
+            <div class="admin-stat">
+                <div class="admin-stat-label">Total Orders</div>
+                <div class="admin-stat-number">
+                    <span><?php echo $totalOrders; ?></span>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="admin-management">
+
+            <a href="admin/dashboard_admin.php">
+                <h3>Manage Genres</h3>
+                <p>Kelola data genre film yang digunakan pada sistem.</p>
+            </a>
+
+            <a href="admin/movie.php">
+                <h3>Manage Movies</h3>
+                <p>Kelola informasi dan data film pada website.</p>
+            </a>
+
+            <a href="admin/showtimes.php">
+                <h3>Manage Showtimes</h3>
+                <p>Kelola jadwal tayang dan harga tiket film.</p>
+            </a>
+
+            <a href="admin/orders.php">
+                <h3>Manage Orders</h3>
+                <p>Lihat dan kelola pesanan tiket yang masuk.</p>
+            </a>
+
+        </div>
+
+    </main>
+
+<?php else: ?>
 
 <nav class="navbar">
 
@@ -1062,7 +1303,7 @@ section.content-section {
         </a>
 
         <?php if ($isAdmin): ?>
-            <a href="./admin/genre.php" class="nav-button">Dashboard</a>
+            <a href="index.php?admin_dashboard=1" class="nav-button">Dashboard</a>
         <?php endif; ?>
 
         <?php if ($isLoggedIn): ?>
@@ -1075,7 +1316,6 @@ section.content-section {
     </div>
 
 </nav>
-
 
 <section class="hero" id="home">
 
@@ -1113,7 +1353,6 @@ section.content-section {
     </div>
 
 </section>
-
 
 <section class="content-section" id="movies">
 
@@ -1267,7 +1506,6 @@ section.content-section {
 
 </section>
 
-
 <section
     class="showtimes-section"
     id="showtimes"
@@ -1392,7 +1630,6 @@ section.content-section {
 
 </section>
 
-
 <section
     class="content-section about"
     id="about"
@@ -1471,10 +1708,14 @@ section.content-section {
 </div>
 
 <script>
-// oper status login user dari PHP ke Javascript
+
+/* Di sini kita mengecek apakah pengguna sudah login atau belum. */
+
 const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
 
-// oper data jadwal tayang dari PHP dalam format JSON
+
+/* Di sini data jadwal tayang dikirim dari PHP ke JavaScript supaya jadwal bisa ditampilkan secara dinamis. */
+
 const showtimes =
     <?php
     echo json_encode(
@@ -1484,7 +1725,9 @@ const showtimes =
     );
     ?>;
 
-// oper data katalog film dari PHP dalam format JSON
+
+/* Di sini data film dikirim dari PHP ke JavaScript supaya bisa dipakai di halaman. */
+
 const movies =
     <?php
     echo json_encode(
@@ -1494,7 +1737,9 @@ const movies =
     );
     ?>;
 
-// oper daftar gambar poster film
+
+/* Di sini data poster film dikirim ke JavaScript untuk ditampilkan. */
+
 const posters =
     <?php
     echo json_encode(
@@ -1504,199 +1749,423 @@ const posters =
     );
     ?>;
 
-// gambar poster cadangan kalau poster film belum ada
+
 const fallbackPoster =
     <?php
     echo json_encode($fallback);
     ?>;
 
-// fungsi helper buat ubah angka jadi format mata uang rupiah
+
+/* Di sini kita mengubah angka harga menjadi format rupiah yang lebih enak dibaca. */
+
 function rupiah(number) {
-    return Number(number).toLocaleString("id-ID");
+
+    return Number(number)
+        .toLocaleString("id-ID");
+
 }
 
-// fungsi helper buat ubah format string tanggal jadi teks tanggal lengkap
+
+/* Di sini kita membuat tanggal tampil dengan format yang lebih ramah untuk pengguna. */
+
 function formatFullDate(date) {
-    const d = new Date(date + "T00:00:00");
-    return d.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric"
-    });
-}
 
-// fungsi saat user memilih salah satu tanggal di kalender jadwal tayang
-function selectShowtimeDate(date, clickedCard) {
-    // hapus status aktif dari semua kartu tanggal kalender
-    document.querySelectorAll(".calendar-card").forEach(card => {
-        card.classList.remove("active");
-    });
-
-    // aktifkan kartu tanggal yang baru saja diklik
-    clickedCard.classList.add("active");
-
-    // tampilkan teks tanggal lengkap di judul jadwal
-    document.getElementById("selectedDateText").textContent = formatFullDate(date);
-
-    // cek apakah tanggal yang dipilih adalah hari libur (weekend) atau hari biasa (weekday)
-    const selectedDate = new Date(date + "T00:00:00");
-    const day = selectedDate.getDay();
-    const isWeekend = day === 0 || day === 6;
-    const type = isWeekend ? "WEEKEND" : "WEEKDAY";
-    const price = isWeekend ? 45000 : 35000;
-
-    // update label jenis hari dan harga tiket
-    document.getElementById("selectedDateType").textContent =
-        type + " • Rp " + rupiah(price);
-
-    // ambil wadah daftar jadwal tayang
-    const schedule = document.getElementById("scheduleList");
-    // kosongkan daftar jadwal sebelumnya
-    schedule.innerHTML = "";
-
-    // periksa setiap film untuk ditampilkan jadwal tayangnya
-    movies.forEach(movie => {
-        // filter jadwal yang sesuai dengan movie_id dan tanggal yang dipilih
-        const movieShowtimes = showtimes.filter(
-            item =>
-                String(item.movie_id) === String(movie.movie_id) &&
-                item.date === date
+    const d =
+        new Date(
+            date + "T00:00:00"
         );
 
-        // tentukan poster film atau pakai poster cadangan
-        const poster = posters[movie.title] || fallbackPoster;
+    return d.toLocaleDateString(
+        "en-US",
+        {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric"
+        }
+    );
 
-        // buat baris container baru untuk film ini
-        const row = document.createElement("div");
-        row.className = "schedule-movie";
+}
 
-        // siapkan penampung tombol jam tayang
-        let timesHTML = "";
 
-        // buat kartu tombol untuk setiap jam tayang yang tersedia
-        movieShowtimes.forEach(item => {
-            timesHTML += `
-                <div class="time-card" onclick="buyTicket('${item.showtime_id}')">
-                    <div class="clock"></div>
-                    <div class="time">${item.time}</div>
-                    <div class="studio">${item.studio}</div>
-                    <div class="price">Rp ${rupiah(item.price)}</div>
-                </div>
-            `;
+/* Di sini kita menampilkan jadwal film sesuai tanggal yang dipilih pengguna. */
+
+function selectShowtimeDate(
+    date,
+    clickedCard
+) {
+
+    document
+        .querySelectorAll(
+            ".calendar-card"
+        )
+        .forEach(card => {
+
+            card.classList.remove(
+                "active"
+            );
+
         });
 
-        // masukkan poster, judul, info genre, dan pilihan jam tayang ke dalam baris
+    clickedCard.classList.add(
+        "active"
+    );
+
+    document.getElementById(
+        "selectedDateText"
+    ).textContent =
+        formatFullDate(date);
+
+    const selectedDate =
+        new Date(
+            date + "T00:00:00"
+        );
+
+    const day =
+        selectedDate.getDay();
+
+    const isWeekend =
+        day === 0 ||
+        day === 6;
+
+    const type =
+        isWeekend
+            ? "WEEKEND"
+            : "WEEKDAY";
+
+    const price =
+        isWeekend
+            ? 45000
+            : 35000;
+
+    document.getElementById(
+        "selectedDateType"
+    ).textContent =
+        type +
+        " • Rp " +
+        rupiah(price);
+
+    const schedule =
+        document.getElementById(
+            "scheduleList"
+        );
+
+    schedule.innerHTML = "";
+
+    movies.forEach(movie => {
+
+        const movieShowtimes =
+            showtimes.filter(
+                item =>
+
+                    String(
+                        item.movie_id
+                    ) ===
+                    String(
+                        movie.movie_id
+                    )
+
+                    &&
+
+                    item.date === date
+            );
+
+        const poster =
+            posters[movie.title]
+            ||
+            fallbackPoster;
+
+        const row =
+            document.createElement(
+                "div"
+            );
+
+        row.className =
+            "schedule-movie";
+
+        let timesHTML = "";
+
+        movieShowtimes.forEach(
+            item => {
+
+                timesHTML += `
+
+                    <div
+                        class="time-card"
+                        onclick="
+                            buyTicket(
+                                '${item.showtime_id}'
+                            )
+                        "
+                    >
+
+                        <div class="clock"></div>
+
+                        <div class="time">
+                            ${item.time}
+                        </div>
+
+                        <div class="studio">
+                            ${item.studio}
+                        </div>
+
+                        <div class="price">
+                            Rp ${rupiah(item.price)}
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
         row.innerHTML = `
+
             <img
                 src="${poster}"
                 class="schedule-poster"
                 alt="${movie.title}"
-                onerror="this.src='${fallbackPoster}';"
+                onerror="
+                    this.src='${fallbackPoster}';
+                "
             >
+
             <div class="schedule-info">
-                <div class="schedule-title">${movie.title}</div>
-                <div class="schedule-genre">
-                    ${movie.genre_name || "Movie"} • ${movie.duration} min
+
+                <div class="schedule-title">
+                    ${movie.title}
                 </div>
+
+                <div class="schedule-genre">
+                    ${movie.genre_name || "Movie"}
+                    •
+                    ${movie.duration} min
+                </div>
+
             </div>
+
             <div class="schedule-times">
                 ${timesHTML}
             </div>
+
         `;
 
-        // tambahkan baris film ke dalam daftar jadwal di halaman
         schedule.appendChild(row);
+
     });
+
 }
 
-// fungsi untuk membuka modal peringatan harus login
+
+/* Di sini pengguna diarahkan ke login atau checkout sesuai status loginnya saat memilih jadwal. */
+
 function openLoginRequired() {
-    document.getElementById("loginRequiredModal").classList.add("show");
+    document
+        .getElementById("loginRequiredModal")
+        .classList.add("show");
 }
 
-// fungsi untuk menutup modal peringatan harus login
 function closeLoginRequired() {
-    document.getElementById("loginRequiredModal").classList.remove("show");
+    document
+        .getElementById("loginRequiredModal")
+        .classList.remove("show");
 }
 
-// simpan showtime_id dan arahkan user ke halaman login
 function saveAndGoToLogin() {
-    const pendingShowtimeId = sessionStorage.getItem("pendingShowtimeId");
+    const pendingShowtimeId =
+        sessionStorage.getItem("pendingShowtimeId");
+
     if (!pendingShowtimeId) {
-        return window.location.href = "login.php";
+        return window.location.href = "/Kelompok2_UTS-main/login.php";
     }
-    window.location.href = "login.php";
+
+    window.location.href =
+        "/Kelompok2_UTS-main/login.php";
 }
 
-// fungsi saat user mengklik jam tayang untuk beli tiket
 function buyTicket(showtimeId) {
-    // kalau belum login, simpan id jadwal yang mau dibeli lalu minta login
+
     if (!isLoggedIn) {
-        sessionStorage.setItem("pendingShowtimeId", String(showtimeId));
+
+        sessionStorage.setItem(
+            "pendingShowtimeId",
+            String(showtimeId)
+        );
+
         openLoginRequired();
         return;
     }
 
-    // kalau sudah login, langsung bawa ke halaman checkout tiket
-    window.location.href = "./checkout.php?showtime_id=" + encodeURIComponent(showtimeId);
+    window.location.href =
+        "./checkout.php?showtime_id=" +
+        encodeURIComponent(showtimeId);
+
 }
 
-// fungsi untuk filter film berdasarkan genre yang diklik user
-function filterMovies(genre, button) {
-    // ubah status aktif pada tombol genre
-    document.querySelectorAll(".genre-btn").forEach(item => {
-        item.classList.remove("active");
-    });
-    button.classList.add("active");
 
-    // sembunyikan atau tampilkan kartu film sesuai genre yang dipilih
-    document.querySelectorAll(".movie-card").forEach(card => {
-        const cardGenre = card.dataset.genre.trim();
-        if (genre === "all" || cardGenre === genre) {
-            card.style.display = "";
-        } else {
-            card.style.display = "none";
-        }
-    });
+/* Di sini daftar film akan disaring sesuai genre yang dipilih pengguna. */
+
+function filterMovies(
+    genre,
+    button
+) {
+
+    document
+        .querySelectorAll(
+            ".genre-btn"
+        )
+        .forEach(item => {
+
+            item.classList.remove(
+                "active"
+            );
+
+        });
+
+    button.classList.add(
+        "active"
+    );
+
+    document
+        .querySelectorAll(
+            ".movie-card"
+        )
+        .forEach(card => {
+
+            const cardGenre =
+                card.dataset.genre.trim();
+
+            if (
+                genre === "all"
+                ||
+                cardGenre === genre
+            ) {
+
+                card.style.display = "";
+
+            } else {
+
+                card.style.display = "none";
+
+            }
+
+        });
+
 }
 
-// fungsi untuk membuka popup sinopsis film
-function openMovie(title, description) {
-    document.getElementById("modalTitle").textContent = title;
-    document.getElementById("modalDescription").textContent = description;
-    document.getElementById("movieModal").classList.add("show");
+
+/* Di sini kita mengatur pop-up detail film dan cara menutupnya. */
+
+function openMovie(
+    title,
+    description
+) {
+
+    document.getElementById(
+        "modalTitle"
+    ).textContent =
+        title;
+
+    document.getElementById(
+        "modalDescription"
+    ).textContent =
+        description;
+
+    document.getElementById(
+        "movieModal"
+    ).classList.add(
+        "show"
+    );
+
 }
 
-// fungsi untuk menutup popup sinopsis film
+
 function closeMovie() {
-    document.getElementById("movieModal").classList.remove("show");
+
+    document.getElementById(
+        "movieModal"
+    ).classList.remove(
+        "show"
+    );
+
 }
 
-// tutup modal sinopsis kalau user klik di area luar kotak modal
-document.getElementById("movieModal").addEventListener("click", function(event) {
-    if (event.target === this) {
-        closeMovie();
-    }
-});
 
-// begitu halaman selesai dimuat di browser, langsung aktifkan jadwal tanggal pertama
-document.addEventListener("DOMContentLoaded", function() {
-    const firstCard = document.querySelector(".calendar-card");
-    if (firstCard) {
-        selectShowtimeDate("2026-10-05", firstCard);
-    }
-});
+/* Di sini pop-up detail film akan tertutup saat pengguna mengklik area di luarnya. */
 
-// kalau user baru saja berhasil login dan sebelumnya punya jadwal yang tertunda, langsung teruskan ke checkout
+document
+    .getElementById(
+        "movieModal"
+    )
+    .addEventListener(
+        "click",
+        function(event) {
+
+            if (
+                event.target === this
+            ) {
+
+                closeMovie();
+
+            }
+
+        }
+    );
+
+
+/* Di sini jadwal untuk tanggal pertama langsung ditampilkan saat halaman dibuka. */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const firstCard =
+            document.querySelector(
+                ".calendar-card"
+            );
+
+        if (firstCard) {
+
+            selectShowtimeDate(
+                "2026-10-05",
+                firstCard
+            );
+
+        }
+
+    }
+);
+
+
+/* Di sini pengguna yang baru selesai login akan diteruskan ke halaman checkout jika sebelumnya memilih tiket. */
+
 if (isLoggedIn) {
-    const pendingShowtimeId = sessionStorage.getItem("pendingShowtimeId");
+
+    const pendingShowtimeId =
+        sessionStorage.getItem(
+            "pendingShowtimeId"
+        );
+
     if (pendingShowtimeId) {
-        sessionStorage.removeItem("pendingShowtimeId");
-        window.location.href = "checkout.php?showtime_id=" + encodeURIComponent(pendingShowtimeId);
+
+        sessionStorage.removeItem(
+            "pendingShowtimeId"
+        );
+
+        window.location.href =
+            "checkout.php?showtime_id=" +
+            encodeURIComponent(
+                pendingShowtimeId
+            );
+
     }
+
 }
+
 </script>
+
+<?php endif; ?>
 
 </body>
 </html>
