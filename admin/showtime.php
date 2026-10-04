@@ -46,7 +46,7 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="h4 mb-0"><i class="bi bi-calendar-event me-2"></i>Kelola Jadwal Tayang</h2>
-        <a href="index.php" class="btn btn-outline-secondary btn-sm">&larr; Dashboard</a>
+        <a href="dashboard_admin.php" class="btn btn-outline-secondary btn-sm">&larr; Dashboard</a>
     </div>
 
     <?php if ($message): ?>
