@@ -15,7 +15,7 @@ if (!$conn) {
     die("Database connection failed.");
 }
 
-/* Di sini kita mengambil data film dari database supaya film bisa tampil di halaman utama. */
+/* Bagian ini mengambil data film dari database untuk ditampilkan pada halaman utama. */
 
 $movieResult = pg_query($conn, "
     SELECT
@@ -46,7 +46,7 @@ while ($row = pg_fetch_assoc($movieResult)) {
     ];
 }
 
-/* Di sini kita mengambil daftar genre agar film bisa difilter berdasarkan genre. */
+/* Bagian ini mengambil daftar genre dari database untuk filter film. */
 
 $genreResult = pg_query($conn, "
     SELECT
@@ -67,7 +67,7 @@ while ($genre = pg_fetch_assoc($genreResult)) {
     $genres[] = $genre;
 }
 
-/* Di sini kita mengambil jadwal tayang dan nama studio dari database. */
+/* Bagian ini mengambil data jadwal tayang beserta studio dari database. */
 
 $showtimeResult = pg_query($conn, "
     SELECT
@@ -92,7 +92,7 @@ if (!$showtimeResult) {
     die("Showtime query failed: " . pg_last_error($conn));
 }
 
-/* Di sini kita menentukan poster film dan gambar cadangan kalau poster utama tidak tersedia. */
+/* Bagian ini menentukan poster film dan gambar cadangan yang digunakan pada halaman. */
 
 $posters = [
     "Avengers: Endgame" =>
@@ -117,7 +117,7 @@ $posters = [
 $fallback =
     "https://via.placeholder.com/500x750/151515/ffffff?text=HIMTI+MOVIE";
 
-/* Di sini data jadwal tayang dikirim dari PHP ke JavaScript supaya jadwal bisa ditampilkan secara dinamis. */
+/* Bagian ini mengirim data jadwal tayang dari PHP ke JavaScript. */
 
 $showtimeData = [];
 
@@ -133,7 +133,7 @@ while ($row = pg_fetch_assoc($showtimeResult)) {
     ];
 }
 
-/* Di sini kita menyiapkan tujuh tanggal tayang mulai 5 Oktober 2026. */
+/* Bagian ini membuat tujuh tanggal tayang secara berurutan mulai dari 5 Oktober 2026. */
 
 $dates = [];
 
@@ -145,7 +145,7 @@ for ($i = 0; $i < 7; $i++) {
     $dates[] = $date->format("Y-m-d");
 }
 
-/* Di sini kita menyiapkan fungsi untuk membuat format tanggal lebih mudah dibaca. */
+/* Bagian ini menyediakan fungsi untuk menampilkan format nama hari, bulan, tanggal dan tanggal lengkap. */
 
 function dayName($date)
 {
@@ -167,7 +167,7 @@ function fullDate($date)
     return date("l, F d, Y", strtotime($date));
 }
 
-/* Di sini kita menentukan apakah harinya weekday atau weekend sekaligus menentukan harga tiketnya. */
+/* Bagian ini menentukan jenis hari dan harga tiket berdasarkan hari kerja atau akhir pekan. */
 
 function dayType($date)
 {
@@ -189,22 +189,6 @@ function ticketPrice($date)
     }
 
     return 35000;
-}
-
-/* Di sini kita mengecek apakah pengguna yang masuk adalah admin supaya menu admin bisa ditampilkan. */
-
-$adminDashboard = $isAdmin && isset($_GET['admin_dashboard']);
-
-if ($adminDashboard) {
-    $countMoviesResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.movies");
-    $countGenresResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.genres");
-    $countShowtimesResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.showtimes");
-    $countOrdersResult = pg_query($conn, "SELECT COUNT(*) AS total FROM public.orders");
-
-    $totalMovies = (int) (pg_fetch_assoc($countMoviesResult)['total'] ?? 0);
-    $totalGenres = (int) (pg_fetch_assoc($countGenresResult)['total'] ?? 0);
-    $totalShowtimes = (int) (pg_fetch_assoc($countShowtimesResult)['total'] ?? 0);
-    $totalOrders = (int) (pg_fetch_assoc($countOrdersResult)['total'] ?? 0);
 }
 
 ?>
@@ -243,7 +227,7 @@ a {
     color: inherit;
 }
 
-/* Di sini kita mengatur menu utama dan tombol akun sesuai status login pengguna. */
+/* Bagian ini mengatur navigasi utama dan tombol akun sesuai status pengguna. */
 
 .navbar {
     position: fixed;
@@ -326,7 +310,7 @@ a {
     cursor: pointer;
 }
 
-/* Di sini kita menampilkan bagian pembuka website beserta nama dan deskripsi singkat HIMTI Movie. */
+/* Bagian ini menampilkan banner utama dengan identitas HIMTI MOVIE dan deskripsi singkat. */
 
 .hero {
     margin-top: 72px;
@@ -399,8 +383,6 @@ a {
     font-size: 12px;
 }
 
-/* Bagian ini mengatur tampilan umum untuk section di halaman. */
-
 section.content-section {
     padding: 70px 7%;
 }
@@ -415,7 +397,7 @@ section.content-section {
     color: #e50914;
 }
 
-/* Di sini kita menampilkan film-film yang tersedia dan menyediakan filter berdasarkan genre. */
+/* Bagian ini menampilkan daftar film terbaru beserta filter berdasarkan genre. */
 
 .genre-filter {
     display: flex;
@@ -496,8 +478,6 @@ section.content-section {
     font-weight: bold;
 }
 
-/* Bagian ini mengatur tampilan section jadwal tayang. */
-
 .showtimes-section {
     background:
         linear-gradient(
@@ -526,8 +506,6 @@ section.content-section {
     color: #888;
     margin-top: 10px;
 }
-
-/* Bagian ini mengatur tampilan pilihan tanggal tayang. */
 
 .calendar {
     display: flex;
@@ -629,8 +607,6 @@ section.content-section {
     color: white;
 }
 
-/* Bagian ini mengatur tampilan informasi tanggal yang dipilih. */
-
 .selected-date-title {
     font-size: 22px;
     font-weight: 900;
@@ -647,8 +623,6 @@ section.content-section {
     font-weight: bold;
     margin-top: 8px;
 }
-
-/* Bagian ini mengatur tampilan baris jadwal untuk setiap film. */
 
 .schedule-list {
     display: flex;
@@ -696,8 +670,6 @@ section.content-section {
     flex-wrap: wrap;
     gap: 12px;
 }
-
-/* Bagian ini mengatur tampilan kartu pilihan jam tayang. */
 
 .time-card {
     min-width: 135px;
@@ -767,8 +739,6 @@ section.content-section {
     font-weight: bold;
 }
 
-/* Bagian ini mengatur tampilan saat jadwal tayang belum tersedia. */
-
 .no-schedule {
     text-align: center;
     padding: 45px;
@@ -777,7 +747,7 @@ section.content-section {
     border-radius: 15px;
 }
 
-/* Di sini kita memberikan penjelasan singkat tentang tujuan dan fungsi website HIMTI Movie. */
+/* Bagian ini menjelaskan tujuan dan fungsi utama website HIMTI Movie. */
 
 .about {
     text-align: center;
@@ -791,8 +761,7 @@ section.content-section {
     line-height: 1.8;
 }
 
-
-/* Di sini kita mengatur tampilan pop-up yang berisi detail film saat film dipilih. */
+/* Bagian ini mengatur tampilan jendela detail film yang muncul ketika pengguna memilih film. */
 
 .modal {
     display: none;
@@ -853,68 +822,26 @@ section.content-section {
 
 .login-required-box {
     width: min(420px, 92vw);
-    background: linear-gradient(145deg, #151515 0%, #0b0b0b 100%);
-    border: 1px solid #3a3a3a;
-    border-top: 5px solid #e50914;
-    border-radius: 20px;
-    padding: 34px 32px 30px;
+    background: #151515;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 30px;
     text-align: center;
-    box-shadow: 0 28px 80px rgba(0,0,0,.75), 0 0 35px rgba(229,9,20,.12);
-    position: relative;
-    overflow: hidden;
-}
-
-.login-required-box::before {
-    content: "";
-    position: absolute;
-    width: 140px;
-    height: 140px;
-    border-radius: 50%;
-    background: rgba(229,9,20,.10);
-    top: -75px;
-    right: -55px;
-}
-
-.login-required-box::after {
-    content: "!";
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 54px;
-    height: 54px;
-    margin: 0 auto 18px;
-    border-radius: 50%;
-    background: #e50914;
-    color: #fff;
-    font-size: 28px;
-    font-weight: 900;
-    box-shadow: 0 8px 24px rgba(229,9,20,.28);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
 
 .login-required-box h3 {
-    position: relative;
-    z-index: 1;
-    color: #fff;
-    font-size: 25px;
-    font-weight: 900;
-    margin-bottom: 10px;
+    font-size: 24px;
+    margin-bottom: 12px;
 }
 
 .login-required-box p {
-    position: relative;
-    z-index: 1;
-    color: #f2f2f2;
-    line-height: 1.7;
-    font-size: 14px;
-    margin: 0 auto 24px;
-    max-width: 330px;
+    color: #aaa;
+    line-height: 1.6;
+    margin-bottom: 22px;
 }
 
 .login-required-actions {
-    position: relative;
-    z-index: 1;
     display: flex;
     justify-content: center;
     gap: 12px;
@@ -922,41 +849,30 @@ section.content-section {
 
 .login-required-actions a,
 .login-required-actions button {
-    min-width: 110px;
     border: none;
     font-family: inherit;
     font-size: 14px;
-    font-weight: 800;
-    padding: 11px 22px;
-    border-radius: 9px;
+    padding: 10px 20px;
+    border-radius: 7px;
     cursor: pointer;
-    transition: .2s ease;
 }
 
 .login-required-login {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
     background: #e50914;
-    color: #fff !important;
-    text-decoration: none;
-    box-shadow: 0 8px 22px rgba(229,9,20,.22);
+    color: white;
 }
 
 .login-required-login:hover {
-    background: #ff1b26;
-    transform: translateY(-2px);
+    background: #b80710;
 }
 
 .login-required-cancel {
-    background: #252525;
-    color: #fff;
-    border: 1px solid #404040 !important;
+    background: #292929;
+    color: white;
 }
 
 .login-required-cancel:hover {
-    background: #333;
-    transform: translateY(-2px);
+    background: #383838;
 }
 
 .modal h2 {
@@ -969,8 +885,6 @@ section.content-section {
     line-height: 1.7;
     margin-bottom: 20px;
 }
-
-/* Bagian ini menyesuaikan tampilan website untuk berbagai ukuran layar. */
 
 @media(max-width:1200px) {
     .movie-grid {
@@ -1049,233 +963,11 @@ section.content-section {
     }
 }
 
-
-/* Di sini kita mengatur tampilan dashboard khusus admin. */
-
-.admin-dashboard {
-    min-height: 100vh;
-    padding: 120px 7% 70px;
-    background: #080808;
-}
-
-.admin-dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 35px;
-}
-
-.admin-dashboard-title {
-    font-size: 38px;
-    font-weight: 900;
-}
-
-.admin-dashboard-title span {
-    color: #e50914;
-}
-
-.admin-dashboard-subtitle {
-    color: #999;
-    margin-top: 8px;
-}
-
-.admin-dashboard-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.admin-dashboard-button {
-    display: inline-block;
-    padding: 11px 18px;
-    border-radius: 8px;
-    background: #e50914;
-    color: white;
-    font-weight: 700;
-}
-
-.admin-dashboard-button.secondary {
-    background: #1a1a1a;
-    border: 1px solid #333;
-}
-
-.admin-dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-bottom: 30px;
-}
-
-.admin-stat {
-    background: #121212;
-    border: 1px solid #292929;
-    border-radius: 14px;
-    padding: 25px;
-}
-
-.admin-stat-label {
-    color: #999;
-    font-size: 13px;
-    margin-bottom: 10px;
-}
-
-.admin-stat-number {
-    font-size: 34px;
-    font-weight: 900;
-}
-
-.admin-stat-number span {
-    color: #e50914;
-}
-
-.admin-management {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-}
-
-.admin-management a {
-    background: #111;
-    border: 1px solid #292929;
-    border-radius: 14px;
-    padding: 22px;
-    transition: .2s;
-}
-
-.admin-management a:hover {
-    border-color: #e50914;
-    transform: translateY(-3px);
-}
-
-.admin-management h3 {
-    font-size: 18px;
-    margin-bottom: 8px;
-}
-
-.admin-management p {
-    color: #888;
-    font-size: 13px;
-    line-height: 1.5;
-}
-
-@media(max-width:1000px) {
-    .admin-dashboard-grid,
-    .admin-management {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media(max-width:600px) {
-    .admin-dashboard {
-        padding-left: 5%;
-        padding-right: 5%;
-    }
-
-    .admin-dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .admin-dashboard-grid,
-    .admin-management {
-        grid-template-columns: 1fr;
-    }
-}
-
 </style>
 
 </head>
 
 <body>
-
-<?php if ($adminDashboard): ?>
-
-    <!-- Bagian ini menampilkan dashboard admin ketika admin memilih menu dashboard. -->
-
-    <main class="admin-dashboard">
-
-        <div class="admin-dashboard-header">
-
-            <div>
-                <div class="admin-dashboard-title">
-                    Admin <span>Dashboard</span>
-                </div>
-                <div class="admin-dashboard-subtitle">
-                    Kelola data HIMTI Movie melalui menu administrasi yang tersedia.
-                </div>
-            </div>
-
-            <div class="admin-dashboard-actions">
-                <a href="index.php" class="admin-dashboard-button secondary">
-                    Kembali ke Website
-                </a>
-                <a href="logout.php" class="admin-dashboard-button">
-                    Logout
-                </a>
-            </div>
-
-        </div>
-
-        <div class="admin-dashboard-grid">
-
-            <div class="admin-stat">
-                <div class="admin-stat-label">Total Movies</div>
-                <div class="admin-stat-number">
-                    <span><?php echo $totalMovies; ?></span>
-                </div>
-            </div>
-
-            <div class="admin-stat">
-                <div class="admin-stat-label">Total Genres</div>
-                <div class="admin-stat-number">
-                    <span><?php echo $totalGenres; ?></span>
-                </div>
-            </div>
-
-            <div class="admin-stat">
-                <div class="admin-stat-label">Total Showtimes</div>
-                <div class="admin-stat-number">
-                    <span><?php echo $totalShowtimes; ?></span>
-                </div>
-            </div>
-
-            <div class="admin-stat">
-                <div class="admin-stat-label">Total Orders</div>
-                <div class="admin-stat-number">
-                    <span><?php echo $totalOrders; ?></span>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="admin-management">
-
-            <a href="admin/dashboard_admin.php">
-                <h3>Manage Genres</h3>
-                <p>Kelola data genre film yang digunakan pada sistem.</p>
-            </a>
-
-            <a href="admin/movie.php">
-                <h3>Manage Movies</h3>
-                <p>Kelola informasi dan data film pada website.</p>
-            </a>
-
-            <a href="admin/showtimes.php">
-                <h3>Manage Showtimes</h3>
-                <p>Kelola jadwal tayang dan harga tiket film.</p>
-            </a>
-
-            <a href="admin/orders.php">
-                <h3>Manage Orders</h3>
-                <p>Lihat dan kelola pesanan tiket yang masuk.</p>
-            </a>
-
-        </div>
-
-    </main>
-
-<?php else: ?>
 
 <nav class="navbar">
 
@@ -1303,14 +995,14 @@ section.content-section {
         </a>
 
         <?php if ($isAdmin): ?>
-            <a href="index.php?admin_dashboard=1" class="nav-button">Dashboard</a>
+            <a href="./admin/dashboard_admin.php" class="nav-button">Dashboard</a>
         <?php endif; ?>
 
         <?php if ($isLoggedIn): ?>
             <a href="./logout.php" class="nav-button">Logout</a>
         <?php else: ?>
             <a href="register.php" class="nav-button">Register</a>
-            <a href="./login.php" class="nav-button">Login</a>
+            <a href="/Kelompok2_UTS-main/login.php" class="nav-button" style="position:relative;z-index:999999;pointer-events:auto;cursor:pointer;" onclick="window.location.href='/Kelompok2_UTS-main/login.php'; return false;">Login</a>
         <?php endif; ?>
 
     </div>
@@ -1648,7 +1340,7 @@ section.content-section {
 
 </section>
 
-    </div>
+</div>
 
 </div>
 
@@ -1685,17 +1377,21 @@ section.content-section {
 <div class="login-required-modal" id="loginRequiredModal">
     <div class="login-required-box">
         <h3>Silakan Login Terlebih Dahulu</h3>
+
         <p>
             Kamu harus login terlebih dahulu untuk melakukan checkout dan membeli tiket.
         </p>
+
         <div class="login-required-actions">
+
             <a
-                href="./login.php"
+                href="/Kelompok2_UTS-main/login.php"
                 class="login-required-login"
                 onclick="saveAndGoToLogin(); return false;"
             >
                 Login
             </a>
+
             <button
                 type="button"
                 class="login-required-cancel"
@@ -1703,18 +1399,20 @@ section.content-section {
             >
                 Batal
             </button>
+
         </div>
+
     </div>
 </div>
 
 <script>
 
-/* Di sini kita mengecek apakah pengguna sudah login atau belum. */
+/* Bagian ini menentukan apakah pengguna sedang login atau belum. */
 
 const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
 
 
-/* Di sini data jadwal tayang dikirim dari PHP ke JavaScript supaya jadwal bisa ditampilkan secara dinamis. */
+/* Bagian ini mengirim data jadwal tayang dari PHP ke JavaScript. */
 
 const showtimes =
     <?php
@@ -1726,7 +1424,7 @@ const showtimes =
     ?>;
 
 
-/* Di sini data film dikirim dari PHP ke JavaScript supaya bisa dipakai di halaman. */
+/* Bagian ini mengirim data film dari PHP ke JavaScript. */
 
 const movies =
     <?php
@@ -1738,7 +1436,7 @@ const movies =
     ?>;
 
 
-/* Di sini data poster film dikirim ke JavaScript untuk ditampilkan. */
+/* Bagian ini mengirim data poster film dari PHP ke JavaScript. */
 
 const posters =
     <?php
@@ -1749,14 +1447,13 @@ const posters =
     );
     ?>;
 
-
 const fallbackPoster =
     <?php
     echo json_encode($fallback);
     ?>;
 
 
-/* Di sini kita mengubah angka harga menjadi format rupiah yang lebih enak dibaca. */
+/* Bagian ini memformat angka harga menjadi tampilan rupiah. */
 
 function rupiah(number) {
 
@@ -1766,7 +1463,7 @@ function rupiah(number) {
 }
 
 
-/* Di sini kita membuat tanggal tampil dengan format yang lebih ramah untuk pengguna. */
+/* Bagian ini memformat tanggal menjadi nama hari, bulan, dan tahun yang mudah dibaca. */
 
 function formatFullDate(date) {
 
@@ -1788,7 +1485,7 @@ function formatFullDate(date) {
 }
 
 
-/* Di sini kita menampilkan jadwal film sesuai tanggal yang dipilih pengguna. */
+/* Bagian ini menampilkan jadwal film sesuai tanggal yang dipilih pengguna. */
 
 function selectShowtimeDate(
     date,
@@ -1958,30 +1655,39 @@ function selectShowtimeDate(
 }
 
 
-/* Di sini pengguna diarahkan ke login atau checkout sesuai status loginnya saat memilih jadwal. */
+/* Bagian ini mengarahkan pengguna ke login atau checkout saat memilih jadwal tiket. */
 
 function openLoginRequired() {
+
     document
         .getElementById("loginRequiredModal")
         .classList.add("show");
+
 }
 
 function closeLoginRequired() {
+
     document
         .getElementById("loginRequiredModal")
         .classList.remove("show");
+
 }
 
 function saveAndGoToLogin() {
+
     const pendingShowtimeId =
         sessionStorage.getItem("pendingShowtimeId");
 
     if (!pendingShowtimeId) {
-        return window.location.href = "/Kelompok2_UTS-main/login.php";
+
+        return window.location.href =
+            "/Kelompok2_UTS-main/login.php";
+
     }
 
     window.location.href =
         "/Kelompok2_UTS-main/login.php";
+
 }
 
 function buyTicket(showtimeId) {
@@ -1994,6 +1700,7 @@ function buyTicket(showtimeId) {
         );
 
         openLoginRequired();
+
         return;
     }
 
@@ -2004,7 +1711,7 @@ function buyTicket(showtimeId) {
 }
 
 
-/* Di sini daftar film akan disaring sesuai genre yang dipilih pengguna. */
+/* Bagian ini menyaring kartu film berdasarkan genre yang dipilih pengguna. */
 
 function filterMovies(
     genre,
@@ -2055,7 +1762,7 @@ function filterMovies(
 }
 
 
-/* Di sini kita mengatur pop-up detail film dan cara menutupnya. */
+/* Bagian ini mengatur tampilan detail dan penutupan jendela informasi film. */
 
 function openMovie(
     title,
@@ -2080,7 +1787,6 @@ function openMovie(
 
 }
 
-
 function closeMovie() {
 
     document.getElementById(
@@ -2092,7 +1798,7 @@ function closeMovie() {
 }
 
 
-/* Di sini pop-up detail film akan tertutup saat pengguna mengklik area di luarnya. */
+/* Bagian ini menutup modal ketika pengguna mengklik area di luar kotak detail. */
 
 document
     .getElementById(
@@ -2114,7 +1820,7 @@ document
     );
 
 
-/* Di sini jadwal untuk tanggal pertama langsung ditampilkan saat halaman dibuka. */
+/* Bagian ini otomatis menampilkan jadwal untuk tanggal pertama ketika halaman selesai dimuat. */
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -2138,7 +1844,7 @@ document.addEventListener(
 );
 
 
-/* Di sini pengguna yang baru selesai login akan diteruskan ke halaman checkout jika sebelumnya memilih tiket. */
+/* Bagian ini meneruskan pengguna ke checkout setelah login berhasil. */
 
 if (isLoggedIn) {
 
@@ -2164,8 +1870,6 @@ if (isLoggedIn) {
 }
 
 </script>
-
-<?php endif; ?>
 
 </body>
 </html>
