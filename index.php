@@ -1,2836 +1,1967 @@
 <?php
 
-require_once "bootstrap.php";
-
-$page_title = "HIMTI MOVIE";
-
-$movies = [];
-$genres = [];
-$schedules = [];
-$coming_soon = [];
-$upcoming_showtimes = [];
-
-$selected_date = $_GET['date'] ?? date('Y-m-d');
-$selected_genre = $_GET['genre'] ?? '';
-
-$error_msg = '';
-
-try {
-
-    $db = new DBConnection();
-
-
-    /* =====================================================
-       MOVIES
-    ===================================================== */
-
-    $movie_query = "
-        SELECT
-            m.*,
-            g.genre_name
-        FROM movies m
-        LEFT JOIN genres g
-            ON m.genre_id = g.genre_id
-        ORDER BY m.movie_id DESC
-    ";
-
-    $movie_result = $db->send_query($movie_query);
-
-    if ($movie_result['success']) {
-        $movies = $movie_result['data'];
-    }
-
-
-    /* =====================================================
-       GENRES
-    ===================================================== */
-
-    $genre_query = "
-        SELECT *
-        FROM genres
-        ORDER BY genre_name ASC
-    ";
-
-    $genre_result = $db->send_query($genre_query);
-
-    if ($genre_result['success']) {
-        $genres = $genre_result['data'];
-    }
-
-
-    /* =====================================================
-       SCHEDULE SESUAI TANGGAL
-    ===================================================== */
-
-    $schedule_query = "
-        SELECT
-            s.showtime_id,
-            s.show_date,
-            s.show_time,
-            s.price,
-            m.movie_id,
-            m.title,
-            m.poster,
-            st.studio_name,
-            st.capacity
-        FROM showtimes s
-        JOIN movies m
-            ON s.movie_id = m.movie_id
-        JOIN studios st
-            ON s.studio_id = st.studio_id
-        WHERE s.show_date = $1
-        ORDER BY s.show_time ASC
-    ";
-
-    $schedule_result = $db->send_query(
-        $schedule_query,
-        [$selected_date]
-    );
-
-    if ($schedule_result['success']) {
-        $schedules = $schedule_result['data'];
-    }
-
-
-    /* =====================================================
-       COMING SOON
-    ===================================================== */
-
-    $coming_query = "
-        SELECT
-            m.*,
-            g.genre_name
-        FROM movies m
-        LEFT JOIN genres g
-            ON m.genre_id = g.genre_id
-        WHERE m.release_date > CURRENT_DATE
-        ORDER BY m.release_date ASC
-        LIMIT 4
-    ";
-
-    $coming_result = $db->send_query($coming_query);
-
-    if ($coming_result['success']) {
-        $coming_soon = $coming_result['data'];
-    }
-
-
-    /* =====================================================
-       UPCOMING SHOWTIMES
-    ===================================================== */
-
-    $upcoming_query = "
-        SELECT
-            s.showtime_id,
-            s.show_date,
-            s.show_time,
-            s.price,
-            m.movie_id,
-            m.title,
-            m.poster,
-            st.studio_name
-        FROM showtimes s
-        JOIN movies m
-            ON s.movie_id = m.movie_id
-        JOIN studios st
-            ON s.studio_id = st.studio_id
-        WHERE s.show_date >= CURRENT_DATE
-        ORDER BY
-            s.show_date ASC,
-            s.show_time ASC
-        LIMIT 6
-    ";
-
-    $upcoming_result = $db->send_query($upcoming_query);
-
-    if ($upcoming_result['success']) {
-        $upcoming_showtimes = $upcoming_result['data'];
-    }
-
-} catch (Exception $e) {
-
-    $error_msg = $e->getMessage();
-
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
+$isLoggedIn = isset($_SESSION['user_id']);
+$isAdmin = $isLoggedIn && ($_SESSION['role'] ?? '') === 'admin';
 
-/* =====================================================
-   LOGIN
-===================================================== */
+$conn = pg_connect(
+    "host=localhost port=5432 dbname=bioskop user=postgres password=12345678"
+);
 
-$is_logged_in = isset($_SESSION['user_id']);
+if (!$conn) {
+    die("Database connection failed.");
+}
 
-$username =
-    $_SESSION['user']['username']
-    ?? 'Pengguna';
+/* Bagian ini mengambil data film dari database untuk ditampilkan pada halaman utama. */
+
+$movieResult = pg_query($conn, "
+    SELECT
+        m.movie_id,
+        m.title,
+        m.duration,
+        m.description,
+        g.genre_name
+    FROM public.movies m
+    LEFT JOIN public.genres g
+        ON m.genre_id = g.genre_id
+    ORDER BY m.movie_id ASC
+");
+
+if (!$movieResult) {
+    die("Movie query failed: " . pg_last_error($conn));
+}
+
+$movies = [];
+
+while ($row = pg_fetch_assoc($movieResult)) {
+    $movies[] = [
+        "movie_id" => $row["movie_id"],
+        "title" => $row["title"],
+        "duration" => $row["duration"],
+        "description" => $row["description"],
+        "genre_name" => $row["genre_name"]
+    ];
+}
+
+/* Bagian ini mengambil daftar genre dari database untuk filter film. */
+
+$genreResult = pg_query($conn, "
+    SELECT
+        MIN(genre_id) AS genre_id,
+        genre_name
+    FROM public.genres
+    GROUP BY genre_name
+    ORDER BY genre_name
+");
+
+if (!$genreResult) {
+    die("Genre query failed: " . pg_last_error($conn));
+}
+
+$genres = [];
+
+while ($genre = pg_fetch_assoc($genreResult)) {
+    $genres[] = $genre;
+}
+
+/* Bagian ini mengambil data jadwal tayang beserta studio dari database. */
+
+$showtimeResult = pg_query($conn, "
+    SELECT
+        s.showtime_id,
+        s.movie_id,
+        s.show_date,
+        s.show_time,
+        s.price,
+        st.studio_name,
+        m.title
+    FROM public.showtimes s
+    JOIN public.movies m
+        ON s.movie_id = m.movie_id
+    JOIN public.studios st
+        ON s.studio_id = st.studio_id
+    ORDER BY
+        s.show_date ASC,
+        s.show_time ASC
+");
+
+if (!$showtimeResult) {
+    die("Showtime query failed: " . pg_last_error($conn));
+}
+
+/* Bagian ini menentukan poster film dan gambar cadangan yang digunakan pada halaman. */
+
+$posters = [
+    "Avengers: Endgame" =>
+        "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+
+    "The Amazing Spider-Man 2" =>
+        "https://image.tmdb.org/t/p/w500/dGjoPttcbKR5VWg1jQuNFB247KL.jpg",
+
+    "Inside Out 2" =>
+        "https://image.tmdb.org/t/p/w500/vpnVM9B6NMmQpWeZvzLvDESb2QY.jpg",
+
+    "Ratatouille" =>
+        "https://image.tmdb.org/t/p/w500/t3vaWRPSf6WjDSamIkKDs1iQWna.jpg",
+
+    "Interstellar" =>
+        "https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+
+    "The Conjuring" =>
+        "https://image.tmdb.org/t/p/w500/wVYREutTvI2tmxr6ujrHT704wGF.jpg"
+];
+
+$fallback =
+    "https://via.placeholder.com/500x750/151515/ffffff?text=HIMTI+MOVIE";
+
+/* Bagian ini mengirim data jadwal tayang dari PHP ke JavaScript. */
+
+$showtimeData = [];
+
+while ($row = pg_fetch_assoc($showtimeResult)) {
+    $showtimeData[] = [
+        "showtime_id" => $row["showtime_id"],
+        "movie_id" => $row["movie_id"],
+        "title" => $row["title"],
+        "date" => $row["show_date"],
+        "time" => date("H:i", strtotime($row["show_time"])),
+        "studio" => $row["studio_name"],
+        "price" => $row["price"]
+    ];
+}
+
+/* Bagian ini membuat tujuh tanggal tayang secara berurutan mulai dari 5 Oktober 2026. */
+
+$dates = [];
+
+$startDate = new DateTime("2026-10-05");
+
+for ($i = 0; $i < 7; $i++) {
+    $date = clone $startDate;
+    $date->modify("+$i day");
+    $dates[] = $date->format("Y-m-d");
+}
+
+/* Bagian ini menyediakan fungsi untuk menampilkan format nama hari, bulan, tanggal, dan tanggal lengkap. */
+
+function dayName($date)
+{
+    return strtoupper(date("D", strtotime($date)));
+}
+
+function monthName($date)
+{
+    return strtoupper(date("M", strtotime($date)));
+}
+
+function dayNumber($date)
+{
+    return date("d", strtotime($date));
+}
+
+function fullDate($date)
+{
+    return date("l, F d, Y", strtotime($date));
+}
+
+/* Bagian ini menentukan jenis hari dan harga tiket berdasarkan hari kerja atau akhir pekan. */
+
+function dayType($date)
+{
+    $day = (int) date("N", strtotime($date));
+
+    if ($day >= 6) {
+        return "WEEKEND";
+    }
+
+    return "WEEKDAY";
+}
+
+function ticketPrice($date)
+{
+    $day = (int) date("N", strtotime($date));
+
+    if ($day >= 6) {
+        return 45000;
+    }
+
+    return 35000;
+}
 
 ?>
 
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
 
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>
-        HIMTI MOVIE - Surabaya
-    </title>
-
-
-    <style>
-
-        /* =====================================================
-           RESET
-        ===================================================== */
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-
-        html {
-            scroll-behavior: smooth;
-        }
-
-
-        body {
-            background: #070707 !important;
-            color: #ffffff !important;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-
-
-        a {
-            text-decoration: none;
-        }
-
-
-        /* =====================================================
-           NAVBAR
-        ===================================================== */
-
-        .top-bar {
-            background: #050505;
-            border-bottom: 1px solid #252525;
-            padding: 18px 6%;
-        }
-
-
-        .navbar-content {
-            display: flex;
-            align-items: center;
-            gap: 25px;
-        }
-
-
-        .logo {
-            color: #ffffff;
-            font-size: 26px;
-            font-weight: 900;
-            letter-spacing: 1px;
-            white-space: nowrap;
-        }
-
-
-        .logo span {
-            color: #e50914;
-        }
-
-
-        .location {
-            color: #999999;
-            font-size: 13px;
-            white-space: nowrap;
-        }
-
-
-        .location strong {
-            color: #ffffff;
-        }
-
-
-        .search-box {
-            flex: 1;
-            max-width: 430px;
-            margin-left: auto;
-        }
-
-
-        .search-box input {
-            width: 100%;
-            background: #151515;
-            border: 1px solid #333333;
-            border-radius: 25px;
-            padding: 11px 20px;
-            color: #ffffff;
-            outline: none;
-        }
-
-
-        .search-box input:focus {
-            border-color: #e50914;
-        }
-
-
-        .search-box input::placeholder {
-            color: #777777;
-        }
-
-
-        .account {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            white-space: nowrap;
-        }
-
-
-        .account a {
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-
-        .login-btn {
-            border: 1px solid #e50914;
-            border-radius: 5px;
-            padding: 8px 16px;
-        }
-
-
-        .login-btn:hover {
-            background: #e50914;
-        }
-
-
-        /* =====================================================
-           MENU
-        ===================================================== */
-
-        .menu-bar {
-            background: #0d0d0d;
-            border-bottom: 1px solid #222222;
-            padding: 0 6%;
-        }
-
-
-        .menu {
-            display: flex;
-            list-style: none;
-            gap: 40px;
-            margin: 0;
-            padding: 0;
-        }
-
-
-        .menu a {
-            display: block;
-            color: #cccccc;
-            font-size: 13px;
-            font-weight: bold;
-            padding: 16px 0;
-        }
-
-
-        .menu a:hover {
-            color: #e50914;
-        }
-
-
-        /* =====================================================
-           HERO
-        ===================================================== */
-
-        .hero {
-            height: 620px;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }
-
-
-        .hero-image {
-            position: absolute;
-            inset: 0;
-
-            width: 100%;
-            height: 100%;
-
-            object-fit: cover;
-            object-position: center;
-
-            display: block;
-        }
-
-
-        .hero-overlay {
-            position: absolute;
-            inset: 0;
-
-            background:
-                linear-gradient(
-                    90deg,
-                    rgba(0,0,0,.96) 0%,
-                    rgba(0,0,0,.82) 30%,
-                    rgba(0,0,0,.30) 68%,
-                    rgba(0,0,0,.60) 100%
-                );
-        }
-
-
-        .hero-content {
-            position: relative;
-            z-index: 2;
-
-            width: 88%;
-            max-width: 1250px;
-
-            margin: auto;
-        }
-
-
-        .hero-label {
-            color: #e50914;
-
-            font-size: 14px;
-            font-weight: bold;
-
-            letter-spacing: 3px;
-
-            margin-bottom: 18px;
-        }
-
-
-        .hero h1 {
-            font-size: 60px;
-
-            font-weight: 900;
-
-            line-height: 1;
-
-            margin-bottom: 22px;
-
-            max-width: 700px;
-        }
-
-
-        .hero h1 span {
-            color: #e50914;
-        }
-
-
-        .hero p {
-            color: #dddddd;
-
-            line-height: 1.7;
-
-            max-width: 550px;
-
-            margin-bottom: 28px;
-
-            font-size: 15px;
-        }
-
-
-        .hero-buttons {
-            display: flex;
-            gap: 12px;
-        }
-
-
-        .btn-red {
-            display: inline-block;
-
-            background: #e50914;
-
-            color: #ffffff;
-
-            padding: 12px 24px;
-
-            border-radius: 4px;
-
-            font-size: 13px;
-
-            font-weight: bold;
-        }
-
-
-        .btn-red:hover {
-            background: #b20710;
-            color: #ffffff;
-        }
-
-
-        .btn-outline {
-            display: inline-block;
-
-            border: 1px solid #777777;
-
-            color: #ffffff;
-
-            padding: 11px 24px;
-
-            border-radius: 4px;
-
-            font-size: 13px;
-
-            font-weight: bold;
-        }
-
-
-        .btn-outline:hover {
-            border-color: #ffffff;
-            color: #ffffff;
-        }
-
-
-        /* =====================================================
-           GENERAL SECTION
-        ===================================================== */
-
-        .section {
-            width: 88%;
-            max-width: 1250px;
-
-            margin: 70px auto;
-        }
-
-
-        .section-heading {
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            margin-bottom: 25px;
-        }
-
-
-        .section-heading h2 {
-            font-size: 27px;
-
-            font-weight: 900;
-        }
-
-
-        .section-heading h2::before {
-            content: "";
-
-            display: inline-block;
-
-            width: 5px;
-            height: 27px;
-
-            background: #e50914;
-
-            margin-right: 12px;
-
-            vertical-align: middle;
-        }
-
-
-        .small-red-label {
-            color: #e50914;
-
-            font-size: 11px;
-
-            font-weight: bold;
-
-            letter-spacing: 3px;
-
-            margin-bottom: 7px;
-        }
-
-
-        .view-all {
-            color: #e50914;
-
-            font-size: 13px;
-
-            font-weight: bold;
-        }
-
-
-        .view-all:hover {
-            color: #ffffff;
-        }
-
-
-        /* =====================================================
-           DATE
-        ===================================================== */
-
-        .date-section {
-            margin-top: -30px;
-
-            position: relative;
-
-            z-index: 5;
-        }
-
-
-        .date-box {
-            background: #111111;
-
-            border: 1px solid #282828;
-
-            border-radius: 8px;
-
-            padding: 24px;
-        }
-
-
-        .date-title {
-            color: #aaaaaa;
-
-            font-size: 12px;
-
-            font-weight: bold;
-
-            letter-spacing: 2px;
-
-            margin-bottom: 17px;
-        }
-
-
-        .date-list {
-            display: flex;
-
-            gap: 10px;
-
-            overflow-x: auto;
-        }
-
-
-        .date-item {
-            min-width: 105px;
-
-            text-align: center;
-
-            color: #bbbbbb;
-
-            background: #191919;
-
-            border: 1px solid #292929;
-
-            border-radius: 6px;
-
-            padding: 13px 10px;
-        }
-
-
-        .date-item:hover {
-            border-color: #e50914;
-
-            color: #ffffff;
-        }
-
-
-        .date-item.active {
-            background: #e50914;
-
-            border-color: #e50914;
-
-            color: #ffffff;
-        }
-
-
-        .date-day {
-            display: block;
-
-            font-size: 11px;
-
-            margin-bottom: 5px;
-        }
-
-
-        .date-number {
-            display: block;
-
-            font-size: 21px;
-
-            font-weight: bold;
-        }
-
-
-        .date-month {
-            display: block;
-
-            font-size: 10px;
-        }
-
-
-        /* =====================================================
-           GENRE
-        ===================================================== */
-
-        .genre-filter {
-            display: flex;
-
-            gap: 9px;
-
-            flex-wrap: wrap;
-
-            margin-bottom: 25px;
-        }
-
-
-        .genre-btn {
-            color: #aaaaaa;
-
-            border: 1px solid #333333;
-
-            background: #111111;
-
-            border-radius: 20px;
-
-            padding: 8px 17px;
-
-            font-size: 12px;
-        }
-
-
-        .genre-btn:hover,
-        .genre-btn.active {
-            color: #ffffff;
-
-            background: #e50914;
-
-            border-color: #e50914;
-        }
-
-
-        /* =====================================================
-           MOVIE GRID
-        ===================================================== */
-
-        .movie-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(4, 1fr);
-
-            gap: 22px;
-        }
-
-
-        .movie-card {
-            background: #111111;
-
-            border: 1px solid #242424;
-
-            border-radius: 7px;
-
-            overflow: hidden;
-
-            transition: .3s;
-        }
-
-
-        .movie-card:hover {
-            transform: translateY(-7px);
-
-            border-color: #e50914;
-
-            box-shadow:
-                0 15px 35px
-                rgba(229,9,20,.12);
-        }
-
-
-        .poster,
-        .no-poster {
-            width: 100%;
-            height: 350px;
-        }
-
-
-        .poster {
-            display: block;
-
-            object-fit: cover;
-        }
-
-
-        .no-poster {
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            background:
-                linear-gradient(
-                    145deg,
-                    #222222,
-                    #080808
-                );
-
-            color: #555555;
-
-            font-weight: bold;
-        }
-
-
-        .movie-info {
-            padding: 17px;
-        }
-
-
-        .movie-title {
-            font-size: 17px;
-
-            font-weight: bold;
-
-            margin-bottom: 7px;
-
-            white-space: nowrap;
-
-            overflow: hidden;
-
-            text-overflow: ellipsis;
-        }
-
-
-        .genre {
-            color: #888888;
-
-            font-size: 12px;
-
-            margin-bottom: 15px;
-        }
-
-
-        .movie-buttons {
-            display: flex;
-
-            gap: 7px;
-        }
-
-
-        .movie-buttons a {
-            flex: 1;
-
-            text-align: center;
-
-            padding: 9px 5px;
-
-            border-radius: 4px;
-
-            font-size: 10px;
-
-            font-weight: bold;
-        }
-
-
-        .synopsis-btn {
-            color: #ffffff;
-
-            border: 1px solid #444444;
-        }
-
-
-        .synopsis-btn:hover {
-            border-color: #aaaaaa;
-
-            color: #ffffff;
-        }
-
-
-        .ticket-btn {
-            background: #e50914;
-
-            color: #ffffff;
-        }
-
-
-        .ticket-btn:hover {
-            background: #b20710;
-
-            color: #ffffff;
-        }
-
-
-        /* =====================================================
-           SCHEDULE
-        ===================================================== */
-
-        .schedule-container {
-            background: #101010;
-
-            border: 1px solid #252525;
-
-            border-radius: 8px;
-
-            overflow: hidden;
-        }
-
-
-        .schedule-card {
-            display: flex;
-
-            align-items: center;
-
-            gap: 22px;
-
-            padding: 20px 24px;
-
-            border-bottom: 1px solid #252525;
-        }
-
-
-        .schedule-card:last-child {
-            border-bottom: none;
-        }
-
-
-        .schedule-poster {
-            width: 65px;
-
-            height: 88px;
-
-            object-fit: cover;
-
-            border-radius: 4px;
-
-            background: #222222;
-
-            flex-shrink: 0;
-        }
-
-
-        .schedule-info {
-            flex: 1;
-        }
-
-
-        .schedule-title {
-            font-size: 17px;
-
-            font-weight: bold;
-
-            margin-bottom: 6px;
-        }
-
-
-        .schedule-studio {
-            color: #888888;
-
-            font-size: 12px;
-        }
-
-
-        .schedule-times {
-            display: flex;
-
-            gap: 8px;
-
-            align-items: center;
-        }
-
-
-        .time-box {
-            background: #191919;
-
-            border: 1px solid #3a3a3a;
-
-            border-radius: 4px;
-
-            padding: 9px 13px;
-
-            text-align: center;
-
-            min-width: 95px;
-        }
-
-
-        .time {
-            display: block;
-
-            font-weight: bold;
-
-            font-size: 13px;
-        }
-
-
-        .price {
-            display: block;
-
-            color: #e50914;
-
-            font-size: 10px;
-
-            margin-top: 3px;
-        }
-
-
-        .empty-state {
-            padding: 45px;
-
-            text-align: center;
-
-            color: #777777;
-        }
-
-
-        /* =====================================================
-           UPCOMING SHOWTIMES
-        ===================================================== */
-
-        .upcoming-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(3, 1fr);
-
-            gap: 20px;
-        }
-
-
-        .upcoming-card {
-            background: #101010;
-
-            border: 1px solid #292929;
-
-            border-radius: 10px;
-
-            overflow: hidden;
-
-            transition: .3s;
-        }
-
-
-        .upcoming-card:hover {
-            transform: translateY(-7px);
-
-            border-color: #e50914;
-
-            box-shadow:
-                0 15px 35px
-                rgba(229,9,20,.14);
-        }
-
-
-        .upcoming-poster {
-            height: 280px;
-
-            position: relative;
-
-            overflow: hidden;
-
-            background: #181818;
-        }
-
-
-        .upcoming-poster img {
-            width: 100%;
-
-            height: 100%;
-
-            object-fit: cover;
-        }
-
-
-        .upcoming-no-poster {
-            width: 100%;
-
-            height: 100%;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-
-            text-align: center;
-
-            color: #555555;
-
-            font-weight: 900;
-
-            background:
-                linear-gradient(
-                    145deg,
-                    #222222,
-                    #080808
-                );
-        }
-
-
-        .date-badge {
-            position: absolute;
-
-            top: 14px;
-            left: 14px;
-
-            background: #e50914;
-
-            color: white;
-
-            padding: 8px 12px;
-
-            border-radius: 5px;
-
-            font-size: 11px;
-
-            font-weight: 800;
-        }
-
-
-        .upcoming-content {
-            padding: 18px;
-        }
-
-
-        .upcoming-content h3 {
-            font-size: 18px;
-
-            font-weight: 800;
-
-            margin-bottom: 5px;
-        }
-
-
-        .upcoming-studio {
-            color: #777777;
-
-            font-size: 12px;
-
-            margin-bottom: 17px;
-        }
-
-
-        .upcoming-bottom {
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-        }
-
-
-        .upcoming-time {
-            display: block;
-
-            font-size: 18px;
-
-            font-weight: 800;
-        }
-
-
-        .upcoming-price {
-            display: block;
-
-            color: #e50914;
-
-            font-size: 11px;
-
-            margin-top: 3px;
-        }
-
-
-        .small-buy {
-            background: #e50914;
-
-            color: white;
-
-            padding: 9px 17px;
-
-            border-radius: 4px;
-
-            font-size: 11px;
-
-            font-weight: 800;
-        }
-
-
-        .small-buy:hover {
-            background: #b20710;
-
-            color: white;
-        }
-
-
-        /* =====================================================
-           COMING SOON
-        ===================================================== */
-
-        .coming-movie-grid {
-            display: grid;
-
-            grid-template-columns:
-                repeat(4, 1fr);
-
-            gap: 20px;
-        }
-
-
-        .coming-movie {
-            background: #111111;
-
-            border: 1px solid #292929;
-
-            border-radius: 9px;
-
-            overflow: hidden;
-
-            transition: .3s;
-        }
-
-
-        .coming-movie:hover {
-            transform: translateY(-6px);
-
-            border-color: #e50914;
-        }
-
-
-        .coming-poster {
-            height: 320px;
-
-            background: #181818;
-        }
-
-
-        .coming-poster img {
-            width: 100%;
-
-            height: 100%;
-
-            object-fit: cover;
-        }
-
-
-        .coming-info {
-            padding: 17px;
-        }
-
-
-        .coming-date {
-            color: #e50914;
-
-            font-size: 11px;
-
-            font-weight: 800;
-        }
-
-
-        .coming-info h3 {
-            font-size: 17px;
-
-            margin: 8px 0 6px;
-        }
-
-
-        .coming-info p {
-            color: #777777;
-
-            font-size: 12px;
-
-            margin-bottom: 15px;
-        }
-
-
-        .coming-link {
-            color: white;
-
-            font-size: 11px;
-
-            font-weight: 800;
-        }
-
-
-        .coming-link:hover {
-            color: #e50914;
-        }
-
-
-        /* =====================================================
-           CINEMA
-        ===================================================== */
-
-        .cinema-box {
-            background:
-                linear-gradient(
-                    120deg,
-                    #1a0000,
-                    #0d0d0d 65%
-                );
-
-            border: 1px solid #391010;
-
-            border-radius: 10px;
-
-            padding: 40px;
-        }
-
-
-        .cinema-label {
-            color: #e50914;
-
-            font-size: 11px;
-
-            font-weight: 800;
-
-            letter-spacing: 3px;
-
-            margin-bottom: 10px;
-        }
-
-
-        .cinema-box h3 {
-            font-size: 32px;
-
-            font-weight: 900;
-
-            margin-bottom: 10px;
-        }
-
-
-        .cinema-box p {
-            color: #999999;
-
-            line-height: 1.7;
-
-            margin: 0;
-
-            max-width: 600px;
-        }
-
-
-        /* =====================================================
-           FOOTER
-        ===================================================== */
-
-        footer {
-            background: #050505;
-
-            border-top: 1px solid #222222;
-
-            padding: 45px 6%;
-
-            margin-top: 80px;
-        }
-
-
-        .footer-content {
-            display: flex;
-
-            justify-content: space-between;
-
-            gap: 30px;
-        }
-
-
-        .footer-logo {
-            font-size: 25px;
-
-            font-weight: 900;
-        }
-
-
-        .footer-logo span {
-            color: #e50914;
-        }
-
-
-        .footer-text {
-            color: #777777;
-
-            font-size: 12px;
-
-            margin-top: 9px;
-        }
-
-
-        .footer-right {
-            color: #777777;
-
-            font-size: 12px;
-
-            line-height: 1.8;
-
-            text-align: right;
-        }
-
-
-        /* =====================================================
-           RESPONSIVE
-        ===================================================== */
-
-        @media (max-width: 950px) {
-
-            .navbar-content {
-                flex-wrap: wrap;
-            }
-
-
-            .search-box {
-                order: 5;
-
-                flex-basis: 100%;
-
-                max-width: 100%;
-            }
-
-
-            .movie-grid {
-                grid-template-columns:
-                    repeat(2, 1fr);
-            }
-
-
-            .coming-movie-grid {
-                grid-template-columns:
-                    repeat(2, 1fr);
-            }
-
-
-            .upcoming-grid {
-                grid-template-columns:
-                    repeat(2, 1fr);
-            }
-
-
-            .hero h1 {
-                font-size: 45px;
-            }
-
-        }
-
-
-        @media (max-width: 650px) {
-
-            .movie-grid,
-            .coming-movie-grid,
-            .upcoming-grid {
-
-                grid-template-columns: 1fr;
-
-            }
-
-
-            .hero {
-                height: 500px;
-            }
-
-
-            .hero h1 {
-                font-size: 36px;
-            }
-
-
-            .schedule-card {
-                align-items: flex-start;
-
-                flex-wrap: wrap;
-            }
-
-
-            .schedule-times {
-                width: 100%;
-
-                justify-content: flex-start;
-            }
-
-
-            .footer-content {
-                flex-direction: column;
-            }
-
-
-            .footer-right {
-                text-align: left;
-            }
-
-        }
-
-    </style>
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>HIMTI MOVIE</title>
+
+<style>
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: #080808;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Bagian ini mengatur navigasi utama dan tombol akun sesuai status pengguna. */
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 72px;
+    background: rgba(8,8,8,0.96);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 55px;
+    z-index: 9999;
+    border-bottom: 1px solid #222;
+}
+
+.logo {
+    font-size: 25px;
+    font-weight: 900;
+}
+
+.logo span {
+    color: #e50914;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    z-index: 100000;
+    pointer-events: auto;
+}
+
+.nav-form {
+    margin: 0;
+    padding: 0;
+    display: inline-block;
+    position: relative;
+    z-index: 100001;
+}
+
+.nav-menu a {
+    color: #ddd;
+    font-size: 14px;
+    position: relative;
+    z-index: 100002;
+    pointer-events: auto !important;
+    cursor: pointer;
+}
+
+.nav-menu a:hover {
+    color: #e50914;
+}
+
+.nav-button {
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    background: #e50914;
+    padding: 10px 20px;
+    border-radius: 7px;
+    color: white !important;
+    display: inline-block;
+    cursor: pointer;
+    position: relative;
+    z-index: 10001;
+    pointer-events: auto;
+}
+
+.nav-button:hover {
+    background: #b80710;
+    color: white !important;
+}
+
+.login-nav-link {
+    position: relative;
+    z-index: 100001;
+    pointer-events: auto !important;
+    cursor: pointer;
+}
+
+/* Bagian ini menampilkan banner utama dengan identitas HIMTI MOVIE dan deskripsi singkat. */
+
+.hero {
+    margin-top: 72px;
+}
+
+.hero-image {
+    height: 520px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.42);
+}
+
+.hero-image::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(0,0,0,.9),
+            rgba(0,0,0,.4),
+            rgba(0,0,0,.1)
+        );
+}
+
+.hero-content {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 8%;
+    transform: translateY(-50%);
+    max-width: 600px;
+}
+
+.hero-small {
+    color: #e50914;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    margin-bottom: 15px;
+}
+
+.hero-title {
+    font-size: 65px;
+    font-weight: 900;
+    margin-bottom: 20px;
+}
+
+.hero-text {
+    color: #ddd;
+    font-size: 17px;
+    line-height: 1.7;
+}
+
+.hero-badge {
+    position: absolute;
+    right: 45px;
+    bottom: 30px;
+    z-index: 3;
+    padding: 10px 17px;
+    background: rgba(0,0,0,.6);
+    border: 1px solid #555;
+    border-radius: 30px;
+    font-size: 12px;
+}
+
+/* =====================================================
+   GENERAL SECTION
+===================================================== */
+
+section.content-section {
+    padding: 70px 7%;
+}
+
+.section-title {
+    font-size: 32px;
+    font-weight: 900;
+    margin-bottom: 28px;
+}
+
+.section-title span {
+    color: #e50914;
+}
+
+/* Bagian ini menampilkan daftar film terbaru beserta filter berdasarkan genre. */
+
+.genre-filter {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+}
+
+.genre-btn {
+    background: #181818;
+    color: #bbb;
+    border: 1px solid #333;
+    padding: 9px 17px;
+    border-radius: 25px;
+    cursor: pointer;
+}
+
+.genre-btn.active,
+.genre-btn:hover {
+    background: #e50914;
+    color: white;
+    border-color: #e50914;
+}
+
+.movie-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 20px;
+}
+
+.movie-card {
+    background: #121212;
+    border: 1px solid #252525;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: .3s;
+}
+
+.movie-card:hover {
+    transform: translateY(-7px);
+    border-color: #e50914;
+    box-shadow:
+        0 15px 35px
+        rgba(229,9,20,.18);
+}
+
+.movie-poster {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+}
+
+.movie-info {
+    padding: 14px;
+}
+
+.movie-title {
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1.4;
+    min-height: 42px;
+}
+
+.movie-meta {
+    margin-top: 8px;
+    color: #888;
+    font-size: 12px;
+}
+
+.movie-button {
+    margin-top: 13px;
+    background: #e50914;
+    text-align: center;
+    padding: 9px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* =====================================================
+   SHOWTIMES SECTION
+===================================================== */
+
+.showtimes-section {
+    background:
+        linear-gradient(
+            180deg,
+            #101010,
+            #080808
+        );
+    padding: 75px 7%;
+}
+
+.showtimes-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.showtimes-header h2 {
+    font-size: 38px;
+    font-weight: 900;
+}
+
+.showtimes-header h2 span {
+    color: #e50914;
+}
+
+.showtimes-header p {
+    color: #888;
+    margin-top: 10px;
+}
+
+/* =====================================================
+   CALENDAR
+===================================================== */
+
+.calendar {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding: 5px 5px 18px;
+    margin-bottom: 40px;
+}
+
+.calendar::-webkit-scrollbar {
+    height: 5px;
+}
+
+.calendar::-webkit-scrollbar-thumb {
+    background: #e50914;
+    border-radius: 20px;
+}
+
+.calendar-card {
+    min-width: 120px;
+    min-height: 145px;
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: .25s;
+    flex-shrink: 0;
+    padding: 10px;
+}
+
+.calendar-card:hover {
+    border-color: #e50914;
+    transform: translateY(-4px);
+}
+
+.calendar-card.active {
+    background:
+        linear-gradient(
+            145deg,
+            #e50914,
+            #9d0008
+        );
+    border-color: #e50914;
+    box-shadow:
+        0 10px 30px
+        rgba(229,9,20,.3);
+}
+
+.calendar-day {
+    font-size: 11px;
+    font-weight: bold;
+    color: #888;
+}
+
+.calendar-card.active .calendar-day {
+    color: white;
+}
+
+.calendar-number {
+    font-size: 38px;
+    font-weight: 900;
+    margin: 4px 0;
+}
+
+.calendar-month {
+    font-size: 11px;
+    font-weight: bold;
+    color: #999;
+}
+
+.calendar-card.active .calendar-month {
+    color: white;
+}
+
+.calendar-type {
+    margin-top: 7px;
+    font-size: 9px;
+    font-weight: bold;
+    color: #aaa;
+    letter-spacing: .5px;
+}
+
+.calendar-card.active .calendar-type {
+    color: white;
+}
+
+.calendar-price {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #e50914;
+}
+
+.calendar-card.active .calendar-price {
+    color: white;
+}
+
+/* =====================================================
+   SELECTED DATE
+===================================================== */
+
+.selected-date-title {
+    font-size: 22px;
+    font-weight: 900;
+    margin-bottom: 28px;
+}
+
+.selected-date-title > span {
+    color: #e50914;
+}
+
+.selected-date-type {
+    color: #e50914;
+    font-size: 13px;
+    font-weight: bold;
+    margin-top: 8px;
+}
+
+/* =====================================================
+   MOVIE SHOWTIME ROW
+===================================================== */
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.schedule-movie {
+    background: #111;
+    border: 1px solid #282828;
+    border-radius: 16px;
+    padding: 23px;
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.schedule-poster {
+    width: 75px;
+    height: 105px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.schedule-info {
+    width: 220px;
+    flex-shrink: 0;
+}
+
+.schedule-title {
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.35;
+    margin-bottom: 8px;
+}
+
+.schedule-genre {
+    color: #888;
+    font-size: 12px;
+}
+
+.schedule-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* =====================================================
+   CLOCK TIME CARD
+===================================================== */
+
+.time-card {
+    min-width: 135px;
+    background: #181818;
+    border: 1px solid #333;
+    border-radius: 13px;
+    padding: 13px;
+    cursor: pointer;
+    transition: .25s;
+    text-align: center;
+}
+
+.time-card:hover {
+    background: #241010;
+    border-color: #e50914;
+    transform: translateY(-3px);
+}
+
+.clock {
+    width: 39px;
+    height: 39px;
+    border: 2px solid #e50914;
+    border-radius: 50%;
+    margin: 0 auto 9px;
+    position: relative;
+    background: #0c0c0c;
+}
+
+.clock::before {
+    content: "";
+    position: absolute;
+    width: 2px;
+    height: 12px;
+    background: white;
+    left: 17px;
+    top: 7px;
+    border-radius: 5px;
+}
+
+.clock::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 2px;
+    background: white;
+    left: 18px;
+    top: 18px;
+    transform: rotate(35deg);
+    transform-origin: left;
+}
+
+.time {
+    font-size: 19px;
+    font-weight: 900;
+    margin-bottom: 5px;
+}
+
+.studio {
+    color: #999;
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.price {
+    color: #e50914;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* =====================================================
+   NO SCHEDULE
+===================================================== */
+
+.no-schedule {
+    text-align: center;
+    padding: 45px;
+    color: #777;
+    border: 1px dashed #333;
+    border-radius: 15px;
+}
+
+/* Bagian ini menjelaskan tujuan dan fungsi utama website HIMTI Movie. */
+
+.about {
+    text-align: center;
+    background: #101010;
+}
+
+.about p {
+    max-width: 650px;
+    margin: auto;
+    color: #888;
+    line-height: 1.8;
+}
+
+
+/* Bagian ini mengatur tampilan jendela detail film yang muncul ketika pengguna memilih film. */
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-box {
+    width: min(700px, 95vw);
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 18px;
+    padding: 35px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 18px;
+    top: 15px;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: 50%;
+    background: #222;
+    color: white;
+    font-size: 23px;
+    cursor: pointer;
+}
+
+.close:hover {
+    background: #e50914;
+}
+
+.login-required-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.78);
+    z-index: 200000;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+}
+
+.login-required-modal.show {
+    display: flex;
+}
+
+.login-required-box {
+    width: min(420px, 92vw);
+    background: linear-gradient(145deg, #151515 0%, #0b0b0b 100%);
+    border: 1px solid #3a3a3a;
+    border-top: 5px solid #e50914;
+    border-radius: 20px;
+    padding: 34px 32px 30px;
+    text-align: center;
+    box-shadow: 0 28px 80px rgba(0,0,0,.75), 0 0 35px rgba(229,9,20,.12);
+    position: relative;
+    overflow: hidden;
+}
+
+.login-required-box::before {
+    content: "";
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(229,9,20,.10);
+    top: -75px;
+    right: -55px;
+}
+
+.login-required-box::after {
+    content: "!";
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin: 0 auto 18px;
+    border-radius: 50%;
+    background: #e50914;
+    color: #fff;
+    font-size: 28px;
+    font-weight: 900;
+    box-shadow: 0 8px 24px rgba(229,9,20,.28);
+}
+
+.login-required-box h3 {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+    font-size: 25px;
+    font-weight: 900;
+    margin-bottom: 10px;
+}
+
+.login-required-box p {
+    position: relative;
+    z-index: 1;
+    color: #f2f2f2;
+    line-height: 1.7;
+    font-size: 14px;
+    margin: 0 auto 24px;
+    max-width: 330px;
+}
+
+.login-required-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.login-required-actions a,
+.login-required-actions button {
+    min-width: 110px;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 11px 22px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.login-required-login {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e50914;
+    color: #fff !important;
+    text-decoration: none;
+    box-shadow: 0 8px 22px rgba(229,9,20,.22);
+}
+
+.login-required-login:hover {
+    background: #ff1b26;
+    transform: translateY(-2px);
+}
+
+.login-required-cancel {
+    background: #252525;
+    color: #fff;
+    border: 1px solid #404040 !important;
+}
+
+.login-required-cancel:hover {
+    background: #333;
+    transform: translateY(-2px);
+}
+
+.modal h2 {
+    font-size: 30px;
+    margin-bottom: 12px;
+}
+
+.modal p {
+    color: #aaa;
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media(max-width:1200px) {
+    .movie-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media(max-width:850px) {
+
+    .navbar {
+        padding: 0 20px;
+    }
+
+    .nav-menu {
+        gap: 10px;
+    }
+
+    .nav-menu > a:not(.nav-button) {
+        display: none;
+    }
+
+    .nav-button {
+        padding: 9px 12px;
+        font-size: 12px;
+    }
+
+    .hero-image {
+        height: 450px;
+    }
+
+    .hero-title {
+        font-size: 45px;
+    }
+
+    .movie-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .schedule-movie {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .schedule-info {
+        width: 100%;
+    }
+
+    .schedule-times {
+        width: 100%;
+    }
+}
+
+@media(max-width:550px) {
+
+    .movie-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .hero-title {
+        font-size: 38px;
+    }
+
+    .hero-text {
+        font-size: 14px;
+    }
+
+    .showtimes-section,
+    section.content-section {
+        padding-left: 5%;
+        padding-right: 5%;
+    }
+
+    .calendar-card {
+        min-width: 105px;
+    }
+}
+
+</style>
 
 </head>
 
-
 <body>
 
-
 <!-- =====================================================
-     HEADER
+     NAVBAR
 ===================================================== -->
 
-<header class="top-bar">
+<nav class="navbar">
 
-    <div class="navbar-content">
+    <div class="logo">
+        HIMTI
+        <span>MOVIE</span>
+    </div>
 
+    <div class="nav-menu">
 
-        <a
-            href="index.php"
-            class="logo"
-        >
-
-            HIMTI<span>MOVIE</span>
-
+        <a href="#home">
+            Home
         </a>
 
+        <a href="#movies">
+            Movies
+        </a>
 
-        <div class="location">
+        <a href="#showtimes">
+            Showtimes
+        </a>
 
-            <strong>
-                SURABAYA
-            </strong>
+        <a href="#about">
+            About
+        </a>
 
-        </div>
+        <?php if ($isAdmin): ?>
+            <a href="./admin/genre.php" class="nav-button">Dashboard</a>
+        <?php endif; ?>
 
-
-        <div class="search-box">
-
-            <input
-                type="text"
-                id="movieSearch"
-                placeholder="Search movies"
-            >
-
-        </div>
-
-
-        <div class="account">
-
-
-            <?php if ($is_logged_in): ?>
-
-
-                <span
-                    style="
-                        color:#aaa;
-                        font-size:13px;
-                    "
-                >
-
-                    Hi,
-                    <?= htmlspecialchars($username) ?>
-
-                </span>
-
-
-                <a
-                    href="history.php"
-                    class="login-btn"
-                >
-
-                    MY ACCOUNT
-
-                </a>
-
-
-            <?php else: ?>
-
-
-                <a
-                    href="login.php"
-                    class="login-btn"
-                >
-
-                    LOGIN
-
-                </a>
-
-
-                <a href="register.php">
-
-                    REGISTER
-
-                </a>
-
-
-            <?php endif; ?>
-
-
-        </div>
+        <?php if ($isLoggedIn): ?>
+            <a href="./logout.php" class="nav-button">Logout</a>
+        <?php else: ?>
+            <a href="register.php" class="nav-button">Register</a>
+            <a href="/Kelompok2_UTS-main/login.php" class="nav-button" style="position:relative;z-index:999999;pointer-events:auto;cursor:pointer;" onclick="window.location.href='/Kelompok2_UTS-main/login.php'; return false;">Login</a>
+        <?php endif; ?>
 
     </div>
 
-</header>
-
-
-<!-- =====================================================
-     MENU
-===================================================== -->
-
-<nav class="menu-bar">
-
-    <ul class="menu">
-
-
-        <li>
-
-            <a href="#cinemas">
-
-                CINEMAS
-
-            </a>
-
-        </li>
-
-
-        <li>
-
-            <a href="#movies">
-
-                MOVIES
-
-            </a>
-
-        </li>
-
-
-        <li>
-
-            <a href="#schedule">
-
-                SHOWTIMES
-
-            </a>
-
-        </li>
-
-
-    </ul>
-
 </nav>
-
 
 <!-- =====================================================
      HERO
 ===================================================== -->
 
-<section class="hero">
-
-
-    <img
-        src="assets/hero-cinema.png"
-        class="hero-image"
-        alt="Cinema auditorium"
-    >
-
-
-    <div class="hero-overlay"></div>
-
-
-    <div class="hero-content">
-
-
-        <div class="hero-label">
-
-            HIMTI MOVIE • SURABAYA
-
-        </div>
-
-
-        <h1>
-
-            YOUR MOVIE.
-            <br>
-
-            YOUR <span>MOMENT.</span>
-
-        </h1>
-
-
-        <p>
-
-            Discover the latest movies,
-            explore showtimes,
-            and book your favorite movie
-            with HIMTI MOVIE.
-
-        </p>
-
-
-        <div class="hero-buttons">
-
-
-            <a
-                href="#movies"
-                class="btn-red"
-            >
-
-                NOW SHOWING
-
-            </a>
-
-
-            <a
-                href="#schedule"
-                class="btn-outline"
-            >
-
-                VIEW SCHEDULE
-
-            </a>
-
-
-        </div>
-
-
-    </div>
-
-</section>
-
-
-<!-- =====================================================
-     SELECT DATE
-===================================================== -->
-
-<section class="section date-section">
-
-
-    <div class="date-box">
-
-
-        <div class="date-title">
-
-            SELECT DATE
-
-        </div>
-
-
-        <div class="date-list">
-
-
-            <?php for ($i = 0; $i < 7; $i++): ?>
-
-
-                <?php
-
-                $date = date(
-                    'Y-m-d',
-                    strtotime("+$i day")
-                );
-
-
-                $day = date(
-                    'D',
-                    strtotime($date)
-                );
-
-
-                $number = date(
-                    'd',
-                    strtotime($date)
-                );
-
-
-                $month = date(
-                    'M',
-                    strtotime($date)
-                );
-
-
-                $active =
-                    ($selected_date === $date)
-                    ? 'active'
-                    : '';
-
-                ?>
-
-
-                <a
-                    href="?date=<?= $date ?>"
-                    class="date-item <?= $active ?>"
-                >
-
-
-                    <span class="date-day">
-
-                        <?= $day ?>
-
-                    </span>
-
-
-                    <span class="date-number">
-
-                        <?= $number ?>
-
-                    </span>
-
-
-                    <span class="date-month">
-
-                        <?= $month ?>
-
-                    </span>
-
-
-                </a>
-
-
-            <?php endfor; ?>
-
-
-        </div>
-
-    </div>
-
-</section>
-
-
-<!-- =====================================================
-     NOW SHOWING
-===================================================== -->
-
-<section
-    class="section"
-    id="movies"
->
-
-
-    <div class="section-heading">
-
-
-        <h2>
-
-            NOW SHOWING
-
-        </h2>
-
-
-        <a
-            href="#schedule"
-            class="view-all"
-        >
-
-            VIEW SCHEDULE →
-
-        </a>
-
-
-    </div>
-
-
-    <!-- GENRE -->
-
-    <div class="genre-filter">
-
-
-        <a
-            href="index.php#movies"
-            class="genre-btn
-            <?= empty($selected_genre) ? 'active' : '' ?>"
-        >
-
-            ALL
-
-        </a>
-
-
-        <?php foreach ($genres as $genre): ?>
-
-
-            <a
-                href="?genre=<?= urlencode($genre['genre_id']) ?>#movies"
-                class="genre-btn
-                <?= ($selected_genre == $genre['genre_id'])
-                    ? 'active'
-                    : '' ?>"
-            >
-
-                <?= htmlspecialchars(
-                    $genre['genre_name']
-                ) ?>
-
-            </a>
-
-
-        <?php endforeach; ?>
-
-
-    </div>
-
-
-    <!-- MOVIES -->
-
-    <div
-        class="movie-grid"
-        id="movieGrid"
-    >
-
-
-        <?php
-
-        $visible_movies = [];
-
-
-        foreach ($movies as $movie) {
-
-
-            if (
-                !empty($selected_genre) &&
-                $movie['genre_id'] != $selected_genre
-            ) {
-
-                continue;
-
-            }
-
-
-            $visible_movies[] = $movie;
-
-        }
-
-        ?>
-
-
-        <?php if (!empty($visible_movies)): ?>
-
-
-            <?php foreach ($visible_movies as $movie): ?>
-
-
-                <?php
-
-                $poster =
-                    $movie['poster']
-                    ?? '';
-
-
-                $isUrl =
-                    filter_var(
-                        $poster,
-                        FILTER_VALIDATE_URL
-                    );
-
-
-                $isLocal =
-                    !$isUrl &&
-                    !empty($poster) &&
-                    file_exists(
-                        __DIR__ . '/' . $poster
-                    );
-
-                ?>
-
-
-                <div
-                    class="movie-card"
-                    data-title="<?= htmlspecialchars(
-                        strtolower($movie['title'])
-                    ) ?>"
-                >
-
-
-                    <?php if ($isUrl || $isLocal): ?>
-
-
-                        <img
-                            src="<?= htmlspecialchars($poster) ?>"
-                            class="poster"
-                            alt="<?= htmlspecialchars(
-                                $movie['title']
-                            ) ?>"
-                        >
-
-
-                    <?php else: ?>
-
-
-                        <div class="no-poster">
-
-                            HIMTI MOVIE
-
-                        </div>
-
-
-                    <?php endif; ?>
-
-
-                    <div class="movie-info">
-
-
-                        <div class="movie-title">
-
-                            <?= htmlspecialchars(
-                                $movie['title']
-                            ) ?>
-
-                        </div>
-
-
-                        <div class="genre">
-
-                            <?= htmlspecialchars(
-                                $movie['genre_name']
-                                ?? 'Movie'
-                            ) ?>
-
-
-                            <?php if (
-                                !empty($movie['duration'])
-                            ): ?>
-
-                                •
-                                <?= htmlspecialchars(
-                                    $movie['duration']
-                                ) ?>
-                                min
-
-                            <?php endif; ?>
-
-
-                        </div>
-
-
-                        <div class="movie-buttons">
-
-
-                            <a
-                                href="movie_detail.php?id=<?= $movie['movie_id'] ?>"
-                                class="synopsis-btn"
-                            >
-
-                                READ SYNOPSIS
-
-                            </a>
-
-
-                            <a
-                                href="movie_detail.php?id=<?= $movie['movie_id'] ?>"
-                                class="ticket-btn"
-                            >
-
-                                BUY TICKET
-
-                            </a>
-
-
-                        </div>
-
-
-                    </div>
-
-
-                </div>
-
-
-            <?php endforeach; ?>
-
-
-        <?php else: ?>
-
-
-            <div
-                class="empty-state"
-                style="grid-column:1/-1;"
-            >
-
-                No movies found.
-
-            </div>
-
-
-        <?php endif; ?>
-
-
-    </div>
-
-</section>
-
-
-<!-- =====================================================
-     MOVIE SCHEDULE
-===================================================== -->
-
-<section
-    class="section"
-    id="schedule"
->
-
-
-    <div class="section-heading">
-
-
-        <h2>
-
-            MOVIE SCHEDULE
-
-        </h2>
-
-
-        <span
-            style="
-                color:#777;
-                font-size:12px;
+<section class="hero" id="home">
+
+    <div class="hero-image">
+
+        <img
+            src="assets/cinema.jpg"
+            alt="Cinema"
+            onerror="
+                this.src='https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1600&q=85';
             "
         >
 
-            <?= date(
-                'd M Y',
-                strtotime($selected_date)
-            ) ?>
+        <div class="hero-content">
 
-        </span>
-
-
-    </div>
-
-
-    <div class="schedule-container">
-
-
-        <?php if (!empty($schedules)): ?>
-
-
-            <?php foreach ($schedules as $schedule): ?>
-
-
-                <?php
-
-                $poster =
-                    $schedule['poster']
-                    ?? '';
-
-
-                $isUrl =
-                    filter_var(
-                        $poster,
-                        FILTER_VALIDATE_URL
-                    );
-
-
-                $isLocal =
-                    !$isUrl &&
-                    !empty($poster) &&
-                    file_exists(
-                        __DIR__ . '/' . $poster
-                    );
-
-                ?>
-
-
-                <div class="schedule-card">
-
-
-                    <?php if ($isUrl || $isLocal): ?>
-
-
-                        <img
-                            src="<?= htmlspecialchars($poster) ?>"
-                            class="schedule-poster"
-                            alt="<?= htmlspecialchars(
-                                $schedule['title']
-                            ) ?>"
-                        >
-
-
-                    <?php else: ?>
-
-
-                        <div
-                            class="schedule-poster"
-                            style="
-                                display:flex;
-                                align-items:center;
-                                justify-content:center;
-                                color:#555;
-                                font-size:10px;
-                            "
-                        >
-
-                            HIMTI
-
-                        </div>
-
-
-                    <?php endif; ?>
-
-
-                    <div class="schedule-info">
-
-
-                        <div class="schedule-title">
-
-                            <?= htmlspecialchars(
-                                $schedule['title']
-                            ) ?>
-
-                        </div>
-
-
-                        <div class="schedule-studio">
-
-                            <?= htmlspecialchars(
-                                $schedule['studio_name']
-                            ) ?>
-
-                            • Capacity
-
-                            <?= htmlspecialchars(
-                                $schedule['capacity']
-                            ) ?>
-
-                        </div>
-
-
-                    </div>
-
-
-                    <div class="schedule-times">
-
-
-                        <div class="time-box">
-
-
-                            <span class="time">
-
-                                <?= date(
-                                    'H:i',
-                                    strtotime(
-                                        $schedule['show_time']
-                                    )
-                                ) ?>
-
-                            </span>
-
-
-                            <span class="price">
-
-                                Rp
-                                <?= number_format(
-                                    $schedule['price'],
-                                    0,
-                                    ',',
-                                    '.'
-                                ) ?>
-
-                            </span>
-
-
-                        </div>
-
-
-                        <a
-                            href="movie_detail.php?id=<?= $schedule['movie_id'] ?>"
-                            class="btn-red"
-                            style="
-                                padding:9px 14px;
-                            "
-                        >
-
-                            BUY
-
-                        </a>
-
-
-                    </div>
-
-
-                </div>
-
-
-            <?php endforeach; ?>
-
-
-        <?php else: ?>
-
-
-            <div class="empty-state">
-
-                No showtimes available
-                for this date.
-
+            <div class="hero-small">
+                WELCOME TO
             </div>
 
+            <div class="hero-title">
+                HIMTI MOVIE
+            </div>
 
-        <?php endif; ?>
+            <div class="hero-text">
+                Find your favorite movies, check showtimes,
+                and buy tickets easily.
+            </div>
 
+        </div>
+
+        <div class="hero-badge">
+            HIMTI MOVIE • SURABAYA
+        </div>
 
     </div>
 
 </section>
 
-
 <!-- =====================================================
-     UPCOMING SHOWTIMES
+     MOVIES
 ===================================================== -->
 
-<section
-    class="section"
-    id="upcoming"
->
+<section class="content-section" id="movies">
 
+    <h2 class="section-title">
+        Latest
+        <span>Movies</span>
+    </h2>
 
-    <div class="section-heading">
+    <div class="genre-filter">
 
-
-        <div>
-
-
-            <div class="small-red-label">
-
-                NEXT SCREENING
-
-            </div>
-
-
-            <h2>
-
-                UPCOMING SHOWTIMES
-
-            </h2>
-
-
-        </div>
-
-
-        <a
-            href="#schedule"
-            class="view-all"
+        <button
+            class="genre-btn active"
+            onclick="filterMovies('all', this)"
         >
+            All
+        </button>
 
-            VIEW SCHEDULE →
+        <?php foreach ($genres as $genre): ?>
 
-        </a>
+            <button
+                class="genre-btn"
+                onclick="
+                    filterMovies(
+                        '<?php
+                        echo htmlspecialchars(
+                            $genre["genre_name"],
+                            ENT_QUOTES
+                        );
+                        ?>',
+                        this
+                    )
+                "
+            >
+                <?php
+                echo htmlspecialchars(
+                    $genre["genre_name"]
+                );
+                ?>
+            </button>
 
+        <?php endforeach; ?>
 
     </div>
 
+    <div class="movie-grid">
 
-    <?php if (!empty($upcoming_showtimes)): ?>
+        <?php foreach ($movies as $movie): ?>
 
+            <?php
 
-        <div class="upcoming-grid">
+            $title = $movie["title"];
 
+            $poster =
+                $posters[$title]
+                ?? $fallback;
 
-            <?php foreach (
-                $upcoming_showtimes
-                as $show
-            ): ?>
+            $genre =
+                $movie["genre_name"]
+                ?? "Movie";
 
+            $description =
+                $movie["description"]
+                ?? "Synopsis not available.";
 
-                <?php
+            ?>
 
-                $poster =
-                    $show['poster']
-                    ?? '';
-
-
-                $isUrl =
-                    filter_var(
-                        $poster,
-                        FILTER_VALIDATE_URL
+            <div
+                class="movie-card"
+                data-genre="<?php
+                    echo htmlspecialchars(
+                        $genre,
+                        ENT_QUOTES
                     );
+                ?>"
+                onclick="
+                    openMovie(
+                        '<?php
+                        echo htmlspecialchars(
+                            $title,
+                            ENT_QUOTES
+                        );
+                        ?>',
+                        '<?php
+                        echo htmlspecialchars(
+                            $description,
+                            ENT_QUOTES
+                        );
+                        ?>'
+                    )
+                "
+            >
 
+                <img
+                    src="<?php
+                        echo htmlspecialchars(
+                            $poster
+                        );
+                    ?>"
+                    class="movie-poster"
+                    alt="<?php
+                        echo htmlspecialchars(
+                            $title
+                        );
+                    ?>"
+                    onerror="
+                        this.src='<?php
+                            echo $fallback;
+                        ?>';
+                    "
+                >
 
-                $isLocal =
-                    !$isUrl &&
-                    !empty($poster) &&
-                    file_exists(
-                        __DIR__ . '/' . $poster
-                    );
+                <div class="movie-info">
 
-                ?>
+                    <div class="movie-title">
+                        <?php
+                        echo htmlspecialchars(
+                            $title
+                        );
+                        ?>
+                    </div>
 
+                    <div class="movie-meta">
 
-                <div class="upcoming-card">
+                        <?php
+                        echo htmlspecialchars(
+                            $genre
+                        );
+                        ?>
 
+                        •
 
-                    <div class="upcoming-poster">
+                        <?php
+                        echo $movie["duration"];
+                        ?>
 
-
-                        <?php if ($isUrl || $isLocal): ?>
-
-
-                            <img
-                                src="<?= htmlspecialchars($poster) ?>"
-                                alt="<?= htmlspecialchars(
-                                    $show['title']
-                                ) ?>"
-                            >
-
-
-                        <?php else: ?>
-
-
-                            <div class="upcoming-no-poster">
-
-                                HIMTI
-                                <br>
-                                MOVIE
-
-                            </div>
-
-
-                        <?php endif; ?>
-
-
-                        <div class="date-badge">
-
-                            <?= date(
-                                'd M',
-                                strtotime(
-                                    $show['show_date']
-                                )
-                            ) ?>
-
-                        </div>
-
+                        min
 
                     </div>
 
-
-                    <div class="upcoming-content">
-
-
-                        <h3>
-
-                            <?= htmlspecialchars(
-                                $show['title']
-                            ) ?>
-
-                        </h3>
-
-
-                        <div class="upcoming-studio">
-
-                            <?= htmlspecialchars(
-                                $show['studio_name']
-                            ) ?>
-
-                        </div>
-
-
-                        <div class="upcoming-bottom">
-
-
-                            <div>
-
-
-                                <span class="upcoming-time">
-
-                                    <?= date(
-                                        'H:i',
-                                        strtotime(
-                                            $show['show_time']
-                                        )
-                                    ) ?>
-
-                                </span>
-
-
-                                <span class="upcoming-price">
-
-                                    Rp
-                                    <?= number_format(
-                                        $show['price'],
-                                        0,
-                                        ',',
-                                        '.'
-                                    ) ?>
-
-                                </span>
-
-
-                            </div>
-
-
-                            <a
-                                href="movie_detail.php?id=<?= $show['movie_id'] ?>"
-                                class="small-buy"
-                            >
-
-                                BUY
-
-                            </a>
-
-
-                        </div>
-
-
+                    <div class="movie-button">
+                        VIEW DETAILS
                     </div>
-
 
                 </div>
-
-
-            <?php endforeach; ?>
-
-
-        </div>
-
-
-    <?php else: ?>
-
-
-        <div class="empty-state">
-
-            No upcoming showtimes available.
-
-        </div>
-
-
-    <?php endif; ?>
-
-
-</section>
-
-
-<!-- =====================================================
-     COMING SOON
-===================================================== -->
-
-<section class="section">
-
-
-    <div class="section-heading">
-
-
-        <div>
-
-
-            <div class="small-red-label">
-
-                COMING SOON
 
             </div>
 
-
-            <h2>
-
-                UPCOMING MOVIES
-
-            </h2>
-
-
-        </div>
-
+        <?php endforeach; ?>
 
     </div>
 
-
-    <?php if (!empty($coming_soon)): ?>
-
-
-        <div class="coming-movie-grid">
-
-
-            <?php foreach (
-                $coming_soon
-                as $movie
-            ): ?>
-
-
-                <?php
-
-                $poster =
-                    $movie['poster']
-                    ?? '';
-
-
-                $isUrl =
-                    filter_var(
-                        $poster,
-                        FILTER_VALIDATE_URL
-                    );
-
-
-                $isLocal =
-                    !$isUrl &&
-                    !empty($poster) &&
-                    file_exists(
-                        __DIR__ . '/' . $poster
-                    );
-
-                ?>
-
-
-                <div class="coming-movie">
-
-
-                    <div class="coming-poster">
-
-
-                        <?php if ($isUrl || $isLocal): ?>
-
-
-                            <img
-                                src="<?= htmlspecialchars($poster) ?>"
-                                alt="<?= htmlspecialchars(
-                                    $movie['title']
-                                ) ?>"
-                            >
-
-
-                        <?php else: ?>
-
-
-                            <div class="upcoming-no-poster">
-
-                                HIMTI
-                                <br>
-                                MOVIE
-
-                            </div>
-
-
-                        <?php endif; ?>
-
-
-                    </div>
-
-
-                    <div class="coming-info">
-
-
-                        <span class="coming-date">
-
-                            <?= date(
-                                'd M Y',
-                                strtotime(
-                                    $movie['release_date']
-                                )
-                            ) ?>
-
-                        </span>
-
-
-                        <h3>
-
-                            <?= htmlspecialchars(
-                                $movie['title']
-                            ) ?>
-
-                        </h3>
-
-
-                        <p>
-
-                            <?= htmlspecialchars(
-                                $movie['genre_name']
-                                ?? 'Movie'
-                            ) ?>
-
-
-                            <?php if (
-                                !empty($movie['duration'])
-                            ): ?>
-
-                                •
-                                <?= htmlspecialchars(
-                                    $movie['duration']
-                                ) ?>
-                                min
-
-                            <?php endif; ?>
-
-
-                        </p>
-
-
-                        <a
-                            href="movie_detail.php?id=<?= $movie['movie_id'] ?>"
-                            class="coming-link"
-                        >
-
-                            VIEW MOVIE →
-
-                        </a>
-
-
-                    </div>
-
-
-                </div>
-
-
-            <?php endforeach; ?>
-
-
-        </div>
-
-
-    <?php else: ?>
-
-
-        <div class="empty-state">
-
-            No upcoming movies available.
-
-        </div>
-
-
-    <?php endif; ?>
-
-
 </section>
 
-
 <!-- =====================================================
-     CINEMA
+     SHOWTIMES
 ===================================================== -->
 
 <section
-    class="section"
-    id="cinemas"
+    class="showtimes-section"
+    id="showtimes"
 >
 
-
-    <div class="section-heading">
-
+    <div class="showtimes-header">
 
         <h2>
-
-            OUR CINEMA
-
+            Movie
+            <span>Showtimes</span>
         </h2>
 
+        <p>
+            Choose your date and find your preferred movie session.
+        </p>
 
     </div>
 
+    <div class="calendar">
 
-    <div class="cinema-box">
+        <?php foreach ($dates as $index => $date): ?>
 
+            <div
+                class="
+                    calendar-card
+                    <?php
+                    echo $index === 0
+                        ? "active"
+                        : "";
+                    ?>
+                "
+                data-date="<?php
+                    echo $date;
+                ?>"
+                onclick="
+                    selectShowtimeDate(
+                        '<?php echo $date; ?>',
+                        this
+                    )
+                "
+            >
 
-        <div class="cinema-label">
+                <div class="calendar-day">
+                    <?php
+                    echo dayName($date);
+                    ?>
+                </div>
 
-            HIMTI MOVIE
+                <div class="calendar-number">
+                    <?php
+                    echo dayNumber($date);
+                    ?>
+                </div>
+
+                <div class="calendar-month">
+                    <?php
+                    echo monthName($date);
+                    ?>
+                </div>
+
+                <div class="calendar-type">
+                    <?php
+                    echo dayType($date);
+                    ?>
+                </div>
+
+                <div class="calendar-price">
+                    Rp
+                    <?php
+                    echo number_format(
+                        ticketPrice($date),
+                        0,
+                        ",",
+                        "."
+                    );
+                    ?>
+                </div>
+
+            </div>
+
+        <?php endforeach; ?>
+
+    </div>
+
+    <div class="selected-date-title">
+
+        <span>
+            SHOWTIMES
+        </span>
+
+        <div
+            id="selectedDateText"
+            style="
+                color:white;
+                margin-top:7px;
+                font-size:24px;
+            "
+        >
+
+            <?php
+            if (!empty($dates)) {
+                echo fullDate($dates[0]);
+            }
+            ?>
 
         </div>
 
-
-        <h3>
-
-            SURABAYA
-
-        </h3>
-
-
-        <p>
-
-            Your movie destination in Surabaya.
-            Choose your movie, select your showtime,
-            and enjoy the experience.
-
-        </p>
-
+        <div
+            id="selectedDateType"
+            class="selected-date-type"
+        >
+            WEEKDAY • Rp 35.000
+        </div>
 
     </div>
 
+    <div
+        class="schedule-list"
+        id="scheduleList"
+    >
+    </div>
 
 </section>
 
-
 <!-- =====================================================
-     FOOTER
+     ABOUT
 ===================================================== -->
 
-<footer>
+<section
+    class="content-section about"
+    id="about"
+>
 
+    <h2 class="section-title">
+        About
+        <span>HIMTI MOVIE</span>
+    </h2>
 
-    <div class="footer-content">
+    <p>
+        HIMTI Movie is a movie information and ticket booking
+        website designed to make it easier for users to discover
+        movies, check showtimes, and book cinema tickets.
+    </p>
 
-
-        <div>
-
-
-            <div class="footer-logo">
-
-                HIMTI<span>MOVIE</span>
-
-            </div>
-
-
-            <div class="footer-text">
-
-                Your movie destination in Surabaya.
-
-            </div>
-
-
-        </div>
-
-
-        <div class="footer-right">
-
-            SURABAYA
-            <br>
-
-            © 2026 HIMTI MOVIE
-
-        </div>
-
+</section>
 
     </div>
 
+</div>
 
-</footer>
+<!-- Bagian ini menampilkan jendela detail film ketika pengguna memilih film. -->
 
+<div
+    class="modal"
+    id="movieModal"
+>
 
-<!-- =====================================================
-     SEARCH
-===================================================== -->
+    <div class="modal-box">
+
+        <button
+            class="close"
+            onclick="closeMovie()"
+        >
+            ×
+        </button>
+
+        <h2 id="modalTitle">
+            Movie
+        </h2>
+
+        <p id="modalDescription">
+            Synopsis
+        </p>
+
+    </div>
+
+</div>
+
+<!-- Bagian ini menampilkan pemberitahuan bahwa pengguna harus login sebelum melakukan checkout. -->
+
+<div class="login-required-modal" id="loginRequiredModal">
+    <div class="login-required-box">
+        <h3>Silakan Login Terlebih Dahulu</h3>
+        <p>
+            Kamu harus login terlebih dahulu untuk melakukan checkout dan membeli tiket.
+        </p>
+        <div class="login-required-actions">
+            <a
+                href="/Kelompok2_UTS-main/login.php"
+                class="login-required-login"
+                onclick="saveAndGoToLogin(); return false;"
+            >
+                Login
+            </a>
+            <button
+                type="button"
+                class="login-required-cancel"
+                onclick="closeLoginRequired()"
+            >
+                Batal
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
 
-const searchInput =
-    document.getElementById("movieSearch");
+/* Bagian ini menentukan apakah pengguna sedang login atau belum. */
+
+const isLoggedIn = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
 
 
-if (searchInput) {
+/* Bagian ini mengirim data jadwal tayang dari PHP ke JavaScript. */
 
-    searchInput.addEventListener(
-        "input",
-        function () {
-
-            const keyword =
-                this.value.toLowerCase();
-
-
-            const cards =
-                document.querySelectorAll(
-                    ".movie-card"
-                );
+const showtimes =
+    <?php
+    echo json_encode(
+        $showtimeData,
+        JSON_UNESCAPED_SLASHES |
+        JSON_UNESCAPED_UNICODE
+    );
+    ?>;
 
 
-            cards.forEach(
-                function (card) {
+/* Bagian ini mengirim data film dari PHP ke JavaScript. */
 
-                    const title =
-                        card.dataset.title || "";
+const movies =
+    <?php
+    echo json_encode(
+        $movies,
+        JSON_UNESCAPED_SLASHES |
+        JSON_UNESCAPED_UNICODE
+    );
+    ?>;
 
 
-                    if (
-                        title.includes(keyword)
-                    ) {
+/* Bagian ini mengirim data poster film dari PHP ke JavaScript. */
 
-                        card.style.display = "";
+const posters =
+    <?php
+    echo json_encode(
+        $posters,
+        JSON_UNESCAPED_SLASHES |
+        JSON_UNESCAPED_UNICODE
+    );
+    ?>;
 
-                    } else {
 
-                        card.style.display = "none";
+const fallbackPoster =
+    <?php
+    echo json_encode($fallback);
+    ?>;
 
-                    }
 
-                }
-            );
+/* Bagian ini memformat angka harga menjadi tampilan rupiah. */
 
+function rupiah(number) {
+
+    return Number(number)
+        .toLocaleString("id-ID");
+
+}
+
+
+/* Bagian ini memformat tanggal menjadi nama hari, bulan, dan tahun yang mudah dibaca. */
+
+function formatFullDate(date) {
+
+    const d =
+        new Date(
+            date + "T00:00:00"
+        );
+
+    return d.toLocaleDateString(
+        "en-US",
+        {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric"
         }
     );
 
 }
 
+
+/* Bagian ini menampilkan jadwal film sesuai tanggal yang dipilih pengguna. */
+
+function selectShowtimeDate(
+    date,
+    clickedCard
+) {
+
+    document
+        .querySelectorAll(
+            ".calendar-card"
+        )
+        .forEach(card => {
+
+            card.classList.remove(
+                "active"
+            );
+
+        });
+
+    clickedCard.classList.add(
+        "active"
+    );
+
+    document.getElementById(
+        "selectedDateText"
+    ).textContent =
+        formatFullDate(date);
+
+    const selectedDate =
+        new Date(
+            date + "T00:00:00"
+        );
+
+    const day =
+        selectedDate.getDay();
+
+    const isWeekend =
+        day === 0 ||
+        day === 6;
+
+    const type =
+        isWeekend
+            ? "WEEKEND"
+            : "WEEKDAY";
+
+    const price =
+        isWeekend
+            ? 45000
+            : 35000;
+
+    document.getElementById(
+        "selectedDateType"
+    ).textContent =
+        type +
+        " • Rp " +
+        rupiah(price);
+
+    const schedule =
+        document.getElementById(
+            "scheduleList"
+        );
+
+    schedule.innerHTML = "";
+
+    movies.forEach(movie => {
+
+        const movieShowtimes =
+            showtimes.filter(
+                item =>
+
+                    String(
+                        item.movie_id
+                    ) ===
+                    String(
+                        movie.movie_id
+                    )
+
+                    &&
+
+                    item.date === date
+            );
+
+        const poster =
+            posters[movie.title]
+            ||
+            fallbackPoster;
+
+        const row =
+            document.createElement(
+                "div"
+            );
+
+        row.className =
+            "schedule-movie";
+
+        let timesHTML = "";
+
+        movieShowtimes.forEach(
+            item => {
+
+                timesHTML += `
+
+                    <div
+                        class="time-card"
+                        onclick="
+                            buyTicket(
+                                '${item.showtime_id}'
+                            )
+                        "
+                    >
+
+                        <div class="clock"></div>
+
+                        <div class="time">
+                            ${item.time}
+                        </div>
+
+                        <div class="studio">
+                            ${item.studio}
+                        </div>
+
+                        <div class="price">
+                            Rp ${rupiah(item.price)}
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+        row.innerHTML = `
+
+            <img
+                src="${poster}"
+                class="schedule-poster"
+                alt="${movie.title}"
+                onerror="
+                    this.src='${fallbackPoster}';
+                "
+            >
+
+            <div class="schedule-info">
+
+                <div class="schedule-title">
+                    ${movie.title}
+                </div>
+
+                <div class="schedule-genre">
+                    ${movie.genre_name || "Movie"}
+                    •
+                    ${movie.duration} min
+                </div>
+
+            </div>
+
+            <div class="schedule-times">
+                ${timesHTML}
+            </div>
+
+        `;
+
+        schedule.appendChild(row);
+
+    });
+
+}
+
+
+/* Bagian ini mengarahkan pengguna ke login atau checkout saat memilih jadwal tiket. */
+
+function openLoginRequired() {
+    document
+        .getElementById("loginRequiredModal")
+        .classList.add("show");
+}
+
+function closeLoginRequired() {
+    document
+        .getElementById("loginRequiredModal")
+        .classList.remove("show");
+}
+
+function saveAndGoToLogin() {
+    const pendingShowtimeId =
+        sessionStorage.getItem("pendingShowtimeId");
+
+    if (!pendingShowtimeId) {
+        return window.location.href = "/Kelompok2_UTS-main/login.php";
+    }
+
+    window.location.href =
+        "/Kelompok2_UTS-main/login.php";
+}
+
+function buyTicket(showtimeId) {
+
+    if (!isLoggedIn) {
+
+        sessionStorage.setItem(
+            "pendingShowtimeId",
+            String(showtimeId)
+        );
+
+        openLoginRequired();
+        return;
+    }
+
+    window.location.href =
+        "./checkout.php?showtime_id=" +
+        encodeURIComponent(showtimeId);
+
+}
+
+
+/* Bagian ini menyaring kartu film berdasarkan genre yang dipilih pengguna. */
+
+function filterMovies(
+    genre,
+    button
+) {
+
+    document
+        .querySelectorAll(
+            ".genre-btn"
+        )
+        .forEach(item => {
+
+            item.classList.remove(
+                "active"
+            );
+
+        });
+
+    button.classList.add(
+        "active"
+    );
+
+    document
+        .querySelectorAll(
+            ".movie-card"
+        )
+        .forEach(card => {
+
+            const cardGenre =
+                card.dataset.genre.trim();
+
+            if (
+                genre === "all"
+                ||
+                cardGenre === genre
+            ) {
+
+                card.style.display = "";
+
+            } else {
+
+                card.style.display = "none";
+
+            }
+
+        });
+
+}
+
+
+/* Bagian ini mengatur tampilan detail dan penutupan jendela informasi film. */
+
+function openMovie(
+    title,
+    description
+) {
+
+    document.getElementById(
+        "modalTitle"
+    ).textContent =
+        title;
+
+    document.getElementById(
+        "modalDescription"
+    ).textContent =
+        description;
+
+    document.getElementById(
+        "movieModal"
+    ).classList.add(
+        "show"
+    );
+
+}
+
+
+function closeMovie() {
+
+    document.getElementById(
+        "movieModal"
+    ).classList.remove(
+        "show"
+    );
+
+}
+
+
+/* Bagian ini menutup modal ketika pengguna mengklik area di luar kotak detail. */
+
+document
+    .getElementById(
+        "movieModal"
+    )
+    .addEventListener(
+        "click",
+        function(event) {
+
+            if (
+                event.target === this
+            ) {
+
+                closeMovie();
+
+            }
+
+        }
+    );
+
+
+/* Bagian ini otomatis menampilkan jadwal untuk tanggal pertama ketika halaman selesai dimuat. */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+        const firstCard =
+            document.querySelector(
+                ".calendar-card"
+            );
+
+        if (firstCard) {
+
+            selectShowtimeDate(
+                "2026-10-05",
+                firstCard
+            );
+
+        }
+
+    }
+);
+
+
+/* Bagian ini meneruskan pengguna ke checkout setelah login berhasil. */
+
+if (isLoggedIn) {
+
+    const pendingShowtimeId =
+        sessionStorage.getItem(
+            "pendingShowtimeId"
+        );
+
+    if (pendingShowtimeId) {
+
+        sessionStorage.removeItem(
+            "pendingShowtimeId"
+        );
+
+        window.location.href =
+            "checkout.php?showtime_id=" +
+            encodeURIComponent(
+                pendingShowtimeId
+            );
+
+    }
+
+}
+
 </script>
 
-
 </body>
-
 </html>
