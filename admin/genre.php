@@ -1,15 +1,4 @@
 <?php
-
-/**
- * File     : admin/genre.php
- * Card     : Genre-02 Genre UI
- * Tugas    : Halaman admin kelola genre: tabel + tambah/edit/hapus.
- * PIC      : Muhammad Raihan Putra Arila
- * Deadline : 2 Oktober 2026
- */
-
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
-
 require_once __DIR__ . '/../bootstrap.php';          // memulai session + koneksi database
 require_once __DIR__ . '/auth_check.php';            // proteksi admin (card Auth-02)
 require_once __DIR__ . '/../classes/Genre.php';
@@ -108,118 +97,478 @@ $daftarGenre = $genreModel->getAllWithMovieCount();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kelola Genre - Admin Bioskop</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Kelola Genre - HIMTI MOVIE</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #080808;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            padding-top: 72px;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* ===== NAVBAR (sama seperti halaman utama) ===== */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 72px;
+            background: rgba(8, 8, 8, .96);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 55px;
+            z-index: 1000;
+            border-bottom: 1px solid #222;
+        }
+
+        .logo {
+            font-size: 25px;
+            font-weight: 900;
+        }
+
+        .logo span {
+            color: #e50914;
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-menu a {
+            color: #ddd;
+            font-size: 14px;
+        }
+
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            color: #e50914;
+        }
+
+        .nav-button {
+            background: #e50914;
+            color: #fff !important;
+            padding: 10px 20px;
+            border-radius: 7px;
+        }
+
+        .nav-button:hover {
+            background: #b80710;
+        }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 40px 24px 70px;
+        }
+
+        .dash-hero {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(90deg, rgba(0, 0, 0, .9), rgba(20, 20, 20, .9));
+            border: 1px solid #252525;
+            border-radius: 16px;
+            padding: 34px 40px;
+            margin-bottom: 30px;
+        }
+
+        .dash-hero::after {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: rgba(229, 9, 20, .12);
+            top: -110px;
+            right: -70px;
+        }
+
+        .dash-small {
+            color: #e50914;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin-bottom: 10px;
+        }
+
+        .dash-title {
+            font-size: 38px;
+            font-weight: 900;
+            margin-bottom: 8px;
+        }
+
+        .dash-title span {
+            color: #e50914;
+        }
+
+        .dash-text {
+            color: #aaa;
+            position: relative;
+            z-index: 1;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 28px;
+            align-items: start;
+        }
+
+        .card {
+            background: #121212;
+            border: 1px solid #252525;
+            border-radius: 14px;
+            padding: 28px;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 22px;
+        }
+
+        .card h2 span {
+            color: #e50914;
+        }
+
+        /* ===== ALERT ===== */
+        .alert {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            border: 1px solid;
+        }
+
+        .alert-success {
+            background: rgba(46, 160, 67, .12);
+            border-color: rgba(46, 160, 67, .5);
+            color: #7ee287;
+        }
+
+        .alert-danger {
+            background: rgba(229, 9, 20, .12);
+            border-color: rgba(229, 9, 20, .5);
+            color: #ff7b82;
+        }
+
+        .alert-close {
+            background: none;
+            border: none;
+            color: inherit;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        /* ===== FORM ===== */
+        label {
+            display: block;
+            margin-bottom: 7px;
+            color: #bbb;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: #181818;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 11px 13px;
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: .2s;
+            margin-bottom: 18px;
+        }
+
+        input[type="text"]:focus {
+            border-color: #e50914;
+            box-shadow: 0 0 0 3px rgba(229, 9, 20, .15);
+        }
+
+        .form-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .btn-simpan {
+            background: #e50914;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .btn-simpan:hover {
+            background: #b80710;
+        }
+
+        .btn-batal {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .btn-batal:hover {
+            color: #e50914;
+        }
+
+        /* ===== TABLE ===== */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 480px;
+        }
+
+        th {
+            color: #e50914;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: #181818;
+        }
+
+        th,
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #252525;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 14px;
+        }
+
+        tbody tr:hover {
+            background: #171717;
+        }
+
+        .text-center { text-align: center; }
+        .text-end { text-align: right; }
+
+        .genre-name {
+            font-weight: bold;
+        }
+
+        .count-badge {
+            display: inline-block;
+            min-width: 34px;
+            background: rgba(229, 9, 20, .12);
+            border: 1px solid rgba(229, 9, 20, .4);
+            color: #ff6a72;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            color: #777;
+            padding: 40px !important;
+        }
+
+        .aksi {
+            white-space: nowrap;
+        }
+
+        .aksi form {
+            display: inline;
+        }
+
+        .btn-edit,
+        .btn-hapus {
+            display: inline-block;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 8px 14px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: .2s;
+        }
+
+        .btn-edit {
+            background: #252525;
+            border: 1px solid #404040;
+            color: #fff;
+        }
+
+        .btn-edit:hover {
+            background: #333;
+        }
+
+        .btn-hapus {
+            background: transparent;
+            border: 1px solid #e50914;
+            color: #e50914;
+            margin-left: 6px;
+        }
+
+        .btn-hapus:hover {
+            background: #e50914;
+            color: #fff;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 950px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 850px) {
+            .navbar { padding: 0 20px; }
+            .nav-menu { gap: 12px; }
+            .nav-menu a { font-size: 12px; }
+            .nav-button { padding: 8px 12px; }
+            .dash-hero { padding: 26px 22px; }
+            .dash-title { font-size: 30px; }
+            .card { padding: 20px; }
+        }
+
+        @media (max-width: 650px) {
+            .nav-menu > a:not(.nav-button) { display: none; }
+        }
+    </style>
 </head>
 
-<body class="bg-light">
+<body>
 
-    <!-- Navbar admin -->
-    <nav class="navbar navbar-expand navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand text-warning" href="../index.php"><i class="bi bi-film me-2"></i>Admin Bioskop</a>
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item"><a class="nav-link" href="movie.php">Film</a></li>
-                <li class="nav-item"><a class="nav-link active" href="genre.php">Genre</a></li>
-                <li class="nav-item"><a class="nav-link" href="showtime.php">Jadwal</a></li>
-                <li class="nav-item"><a class="nav-link" href="orders.php">Pesanan</a></li>
-            </ul>
-            <a class="btn btn-outline-light btn-sm" href="dashboard_admin.php">Ke Dashboard Admin</a>
+    <!-- ===== NAVBAR ===== -->
+    <nav class="navbar">
+        <div class="logo">HIMTI <span>MOVIE</span></div>
+
+        <div class="nav-menu">
+            <a href="dashboard_admin.php">Dashboard</a>
+            <a href="movie.php">Film</a>
+            <a href="genre.php" class="active">Genre</a>
+            <a href="showtime.php">Jadwal</a>
+            <a href="orders.php">Pesanan</a>
+            <a href="../index.php">Website</a>
+            <a href="../logout.php" class="nav-button">Logout</a>
         </div>
     </nav>
 
-    <div class="container pb-5">
-        <h1 class="h3 mb-4"><i class="bi bi-tags me-2"></i>Kelola Genre</h1>
+    <div class="container">
+
+        <div class="dash-hero">
+            <div class="dash-small">ADMIN PANEL</div>
+            <h1 class="dash-title">Kelola <span>Genre</span></h1>
+            <p class="dash-text">Atur kategori genre yang dipakai untuk mengelompokkan film di website HIMTI MOVIE.</p>
+        </div>
 
         <?php if ($flash): ?>
-            <div class="alert alert-<?= aman($flash['type']) ?> alert-dismissible fade show" role="alert">
-                <?= aman($flash['text']) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            <div class="alert alert-<?= aman($flash['type']) ?>" role="alert">
+                <span><?= aman($flash['text']) ?></span>
+                <button type="button" class="alert-close" aria-label="Tutup"
+                    onclick="this.parentElement.remove()">&times;</button>
             </div>
         <?php endif; ?>
 
-        <div class="row g-4">
+        <div class="layout">
+
             <!-- Form tambah / edit -->
-            <div class="col-lg-4">
-                <div class="card shadow-sm">
-                    <div class="card-header fw-semibold">
-                        <?= $modeEdit ? 'Edit Genre' : 'Tambah Genre' ?>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" action="genre.php">
-                            <input type="hidden" name="aksi" value="simpan">
-                            <input type="hidden" name="id" value="<?= aman($formId) ?>">
+            <div class="card">
+                <h2><?= $modeEdit ? 'Edit <span>Genre</span>' : 'Tambah <span>Genre</span>' ?></h2>
 
-                            <label for="genre_name" class="form-label">Nama Genre</label>
-                            <input type="text" class="form-control mb-3" id="genre_name" name="genre_name"
-                                maxlength="30" required placeholder="Contoh: Horor"
-                                value="<?= aman($formNama) ?>">
+                <form method="post" action="genre.php">
+                    <input type="hidden" name="aksi" value="simpan">
+                    <input type="hidden" name="id" value="<?= aman($formId) ?>">
 
-                            <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="bi bi-save me-1"></i><?= $modeEdit ? 'Simpan Perubahan' : 'Tambah' ?>
-                                </button>
-                                <?php if ($modeEdit): ?>
-                                    <a href="genre.php" class="btn btn-outline-secondary">Batal</a>
-                                <?php endif; ?>
-                            </div>
-                        </form>
+                    <label for="genre_name">Nama Genre</label>
+                    <input type="text" id="genre_name" name="genre_name"
+                        maxlength="30" required placeholder="Contoh: Horor"
+                        value="<?= aman($formNama) ?>">
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-simpan">
+                            <i class="bi bi-save me-1"></i> <?= $modeEdit ? 'Simpan Perubahan' : 'Tambah' ?>
+                        </button>
+                        <?php if ($modeEdit): ?>
+                            <a href="genre.php" class="btn-batal">Batal</a>
+                        <?php endif; ?>
                     </div>
-                </div>
+                </form>
             </div>
 
             <!-- Tabel genre -->
-            <div class="col-lg-8">
-                <div class="card shadow-sm">
-                    <div class="card-header fw-semibold">Daftar Genre (<?= count($daftarGenre) ?>)</div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+            <div class="card">
+                <h2>Daftar <span>Genre</span> (<?= count($daftarGenre) ?>)</h2>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:60px">No</th>
+                                <th>Nama Genre</th>
+                                <th class="text-center">Jumlah Film</th>
+                                <th class="text-end" style="width:190px">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($daftarGenre)): ?>
                                 <tr>
-                                    <th style="width:60px">No</th>
-                                    <th>Nama Genre</th>
-                                    <th class="text-center">Jumlah Film</th>
-                                    <th class="text-end" style="width:180px">Aksi</th>
+                                    <td colspan="4" class="empty">Belum ada genre.</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($daftarGenre)): ?>
+                            <?php else: ?>
+                                <?php foreach ($daftarGenre as $i => $g): ?>
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">Belum ada genre.</td>
+                                        <td><?= $i + 1 ?></td>
+                                        <td class="genre-name"><?= aman($g['genre_name']) ?></td>
+                                        <td class="text-center"><span class="count-badge"><?= (int) $g['total_film'] ?></span></td>
+                                        <td class="text-end aksi">
+                                            <a href="genre.php?edit=<?= (int) $g['genre_id'] ?>" class="btn-edit">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <!-- Hapus memakai POST (bukan link) supaya tidak terhapus lewat klik tak sengaja/crawler -->
+                                            <form method="post" action="genre.php"
+                                                onsubmit="return confirm('Hapus genre &quot;<?= aman(addslashes($g['genre_name'])) ?>&quot;?<?= (int) $g['total_film'] > 0 ? ' ' . (int) $g['total_film'] . ' film akan kehilangan genre-nya.' : '' ?>');">
+                                                <input type="hidden" name="aksi" value="hapus">
+                                                <input type="hidden" name="id" value="<?= (int) $g['genre_id'] ?>">
+                                                <button type="submit" class="btn-hapus">
+                                                    <i class="bi bi-trash"></i> Hapus
+                                                </button>
+                                            </form>
+                                        </td>
                                     </tr>
-                                <?php else: ?>
-                                    <?php foreach ($daftarGenre as $i => $g): ?>
-                                        <tr>
-                                            <td><?= $i + 1 ?></td>
-                                            <td><?= aman($g['genre_name']) ?></td>
-                                            <td class="text-center"><span class="badge bg-secondary"><?= (int) $g['total_film'] ?></span></td>
-                                            <td class="text-end">
-                                                <a href="genre.php?edit=<?= (int) $g['genre_id'] ?>" class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-pencil"></i> Edit
-                                                </a>
-                                                <!-- Hapus memakai POST (bukan link) supaya tidak terhapus lewat klik tak sengaja/crawler -->
-                                                <form method="post" action="genre.php" class="d-inline"
-                                                    onsubmit="return confirm('Hapus genre &quot;<?= aman(addslashes($g['genre_name'])) ?>&quot;?<?= (int) $g['total_film'] > 0 ? ' ' . (int) $g['total_film'] . ' film akan kehilangan genre-nya.' : '' ?>');">
-                                                    <input type="hidden" name="aksi" value="hapus">
-                                                    <input type="hidden" name="id" value="<?= (int) $g['genre_id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="bi bi-trash"></i> Hapus
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
+
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>

@@ -13,7 +13,7 @@ $isAdmin = $isLoggedIn && ($_SESSION['role'] ?? '') === 'admin';
 
 // koneksi ke database postgresql di localhost
 $conn = pg_connect(
-    "host=localhost port=5432 dbname=bioskop user=postgres password=12345678"
+    "host=localhost port=5432 dbname=bioskop user=postgres password=1111"
 );
 
 // kalau koneksi database gagal, hentikan proses
@@ -1062,7 +1062,7 @@ section.content-section {
         </a>
 
         <?php if ($isAdmin): ?>
-            <a href="./admin/genre.php" class="nav-button">Dashboard</a>
+            <a href="./admin/dashboard_admin.php" class="nav-button">Dashboard</a>
         <?php endif; ?>
 
         <?php if ($isLoggedIn): ?>

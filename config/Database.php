@@ -5,7 +5,7 @@ class DBConnection
     private string $port = "5432";
     private string $dbname = "bioskop";
     private string $username = "postgres";
-    private string $password = "12345678";
+    private string $password = "1111";
     private $dbconn = null;
 
     public function __construct()
@@ -18,7 +18,9 @@ class DBConnection
         $conn_string = "host={$this->host} port={$this->port} dbname={$this->dbname} "
             . "user={$this->username} password={$this->password}";
 
-        $this->dbconn = @pg_connect($conn_string);
+        // PGSQL_CONNECT_FORCE_NEW: setiap objek memakai koneksi sendiri,
+        // tidak berbagi koneksi dengan objek DBConnection lain.
+        $this->dbconn = @pg_connect($conn_string, PGSQL_CONNECT_FORCE_NEW);
 
         if (!$this->dbconn) {
             $last_error = error_get_last()['message'] ?? '';
@@ -54,8 +56,13 @@ class DBConnection
     public function close_connection(): void
     {
         if ($this->dbconn) {
-            pg_close($this->dbconn);
-            $this->dbconn = null;
+            try {
+                pg_close($this->dbconn);
+            } catch (\Error $e) {
+                // Koneksi sudah ditutup di tempat lain, abaikan.
+            } finally {
+                $this->dbconn = null;
+            }
         }
     }
 
