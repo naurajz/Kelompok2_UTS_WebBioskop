@@ -12,6 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+$base_url = $base_url ?? '';
 $is_logged_in = isset($_SESSION['user_id']);
 $username = $_SESSION['user']['username'] ?? 'Pengguna';
 $role = $_SESSION['role'] ?? 'customer';
@@ -47,7 +48,7 @@ $role = $_SESSION['role'] ?? 'customer';
 <!-- Navbar Utama -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
     <div class="container">
-        <a class="navbar-brand text-warning" href="index.php">
+        <a class="navbar-brand text-warning" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
             <i class="bi bi-film me-2"></i>Cinema XXI / Bioskop
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,19 +58,19 @@ $role = $_SESSION['role'] ?? 'customer';
         <div class="collapse navbar-collapse" id="navbarMain">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : '' ?>" href="index.php">
+                    <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : '' ?>" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
                         <i class="bi bi-house-door me-1"></i>Beranda
                     </a>
                 </li>
                 <?php if ($is_logged_in): ?>
                     <li class="nav-item">
-                        <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) == 'history.php') ? 'active' : '' ?>" href="history.php">
+                        <a class="nav-link <?= (basename($_SERVER['PHP_SELF']) == 'history.php') ? 'active' : '' ?>" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>history.php">
                             <i class="bi bi-ticket-perforated me-1"></i>Riwayat Pesanan
                         </a>
                     </li>
                     <?php if ($role === 'admin'): ?>
                         <li class="nav-item">
-                            <a class="nav-link text-warning" href="admin/genre.php">
+                            <a class="nav-link text-warning" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/genre.php">
                                 <i class="bi bi-speedometer2 me-1"></i>Panel Admin
                             </a>
                         </li>
@@ -90,11 +91,11 @@ $role = $_SESSION['role'] ?? 'customer';
                         <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
                             <li><h6 class="dropdown-header">Masuk sebagai: <?= htmlspecialchars($username) ?></h6></li>
                             <?php if ($role === 'admin'): ?>
-                                <li><a class="dropdown-item" href="admin/genre.php"><i class="bi bi-gear me-2"></i>Kelola Bioskop (Admin)</a></li>
+                                <li><a class="dropdown-item" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/genre.php"><i class="bi bi-gear me-2"></i>Kelola Bioskop (Admin)</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <?php endif; ?>
                             <li>
-                                <a class="dropdown-item text-danger" href="logout.php">
+                                <a class="dropdown-item text-danger" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>logout.php">
                                     <i class="bi bi-box-arrow-right me-2"></i>Keluar (Logout)
                                 </a>
                             </li>
@@ -102,12 +103,12 @@ $role = $_SESSION['role'] ?? 'customer';
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="login.php">
+                        <a class="nav-link" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>login.php">
                             <i class="bi bi-box-arrow-in-right me-1"></i>Masuk
                         </a>
                     </li>
                     <li class="nav-item ms-lg-2">
-                        <a class="btn btn-warning btn-sm px-3" href="register.php">
+                        <a class="btn btn-warning btn-sm px-3" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>register.php">
                             <i class="bi bi-person-plus me-1"></i>Daftar
                         </a>
                     </li>
