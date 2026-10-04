@@ -37,6 +37,70 @@ $role = $_SESSION['role'] ?? 'customer';
         .navbar-brand {
             font-weight: 700;
             letter-spacing: 0.5px;
+            color: #fff;
+        }
+        .navbar-brand:hover,
+        .navbar-brand:focus {
+            color: #fff;
+        }
+        .navbar-brand i {
+            color: #e50914;
+        }
+        .site-navbar {
+            background: rgba(8, 8, 8, 0.96);
+            border-bottom: 1px solid #222;
+        }
+        .site-navbar .nav-link {
+            color: #ddd;
+            transition: color 0.2s ease;
+        }
+        .site-navbar .nav-link:hover,
+        .site-navbar .nav-link:focus,
+        .site-navbar .nav-link.active {
+            color: #e50914;
+        }
+        .site-navbar .navbar-toggler {
+            border-color: #444;
+        }
+        .site-navbar .btn-login,
+        .site-navbar .btn-register {
+            background: #e50914;
+            border: 1px solid #e50914;
+            border-radius: 7px;
+            color: #fff;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .site-navbar .btn-login:hover,
+        .site-navbar .btn-login:focus,
+        .site-navbar .btn-register:hover,
+        .site-navbar .btn-register:focus {
+            background: #b80710;
+            border-color: #b80710;
+            color: #fff;
+        }
+        .site-navbar .user-dropdown {
+            color: #ddd !important;
+        }
+        .site-navbar .user-role-badge {
+            background: #e50914;
+        }
+        .site-navbar .dropdown-menu {
+            background: #151515;
+            border: 1px solid #333;
+        }
+        .site-navbar .dropdown-header {
+            color: #aaa;
+        }
+        .site-navbar .dropdown-item {
+            color: #ddd;
+        }
+        .site-navbar .dropdown-item:hover,
+        .site-navbar .dropdown-item:focus {
+            background: #252525;
+            color: #fff;
+        }
+        .site-navbar .dropdown-divider {
+            border-color: #333;
         }
         .main-content {
             flex: 1;
@@ -46,13 +110,13 @@ $role = $_SESSION['role'] ?? 'customer';
 <body>
 
 <!-- Navbar Utama -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+<nav class="navbar navbar-expand-lg navbar-dark site-navbar sticky-top shadow-sm">
     <div class="container">
-        <a class="navbar-brand text-warning" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
+        <a class="navbar-brand" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>index.php">
             <i class="bi bi-film me-2"></i>Cinema XXI / Bioskop
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-nav-icon"></span>
+            <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarMain">
@@ -70,7 +134,7 @@ $role = $_SESSION['role'] ?? 'customer';
                     </li>
                     <?php if ($role === 'admin'): ?>
                         <li class="nav-item">
-                            <a class="nav-link text-warning" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/genre.php">
+                            <a class="nav-link" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>admin/genre.php">
                                 <i class="bi bi-speedometer2 me-1"></i>Panel Admin
                             </a>
                         </li>
@@ -81,10 +145,10 @@ $role = $_SESSION['role'] ?? 'customer';
             <ul class="navbar-nav ms-auto align-items-center">
                 <?php if ($is_logged_in): ?>
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link user-dropdown dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
                             <strong><?= htmlspecialchars($username) ?></strong>
-                            <span class="badge bg-<?= $role === 'admin' ? 'danger' : 'info' ?> ms-1 text-uppercase" style="font-size: 0.7rem;">
+                            <span class="badge user-role-badge ms-1 text-uppercase" style="font-size: 0.7rem;">
                                 <?= htmlspecialchars($role) ?>
                             </span>
                         </a>
@@ -103,12 +167,12 @@ $role = $_SESSION['role'] ?? 'customer';
                     </li>
                 <?php else: ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>login.php">
+                        <a class="nav-link btn-login px-3 py-2" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>login.php">
                             <i class="bi bi-box-arrow-in-right me-1"></i>Masuk
                         </a>
                     </li>
                     <li class="nav-item ms-lg-2">
-                        <a class="btn btn-warning btn-sm px-3" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>register.php">
+                        <a class="btn btn-sm btn-register px-3" href="<?= htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8') ?>register.php">
                             <i class="bi bi-person-plus me-1"></i>Daftar
                         </a>
                     </li>
