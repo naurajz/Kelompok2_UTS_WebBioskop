@@ -12,193 +12,220 @@ if ($is_logged_in) {
 }
 
 // Mengambil genre dari database.
-$selected_genre = $_GET['genre'] ?? '';
-
-$genre_result = $db->send_query("
+$genres_result = $db->send_query("
     SELECT genre_id, genre_name
     FROM genres
     ORDER BY genre_name ASC
 ");
 
-$genres = $genre_result['data'] ?? [];
+$genres = $genres_result['data'] ?? [];
 
-// Mengambil data film berdasarkan genre yang dipilih.
+// Mengambil genre yang dipilih pengguna.
+$selected_genre = $_GET['genre'] ?? '';
+
+// Mengambil daftar film beserta poster dan genre.
 if ($selected_genre !== '') {
-
-    $movie_result = $db->send_query("
-        SELECT 
-            m.*,
+    $movies_result = $db->send_query("
+        SELECT
+            m.movie_id,
+            m.title,
+            m.description,
+            m.duration,
+            m.release_date,
+            m.poster,
             g.genre_name
         FROM movies m
-        LEFT JOIN genres g 
-            ON m.genre_id = g.genre_id
+        LEFT JOIN genres g ON m.genre_id = g.genre_id
         WHERE m.genre_id = $1
         ORDER BY m.movie_id DESC
     ", [$selected_genre]);
-
 } else {
-
-    $movie_result = $db->send_query("
-        SELECT 
-            m.*,
+    $movies_result = $db->send_query("
+        SELECT
+            m.movie_id,
+            m.title,
+            m.description,
+            m.duration,
+            m.release_date,
+            m.poster,
             g.genre_name
         FROM movies m
-        LEFT JOIN genres g 
-            ON m.genre_id = g.genre_id
+        LEFT JOIN genres g ON m.genre_id = g.genre_id
         ORDER BY m.movie_id DESC
     ");
 }
 
-$movies = $movie_result['data'] ?? [];
+$movies = $movies_result['data'] ?? [];
 
-// Menentukan tanggal jadwal yang dipilih.
+// Mengatur tanggal jadwal yang sedang dipilih.
 $selected_date = $_GET['date'] ?? date('Y-m-d');
 
-// Mengambil jadwal film berdasarkan tanggal yang dipilih.
-$showtime_result = $db->send_query("
+// Mengambil jadwal film berdasarkan tanggal.
+$showtimes_result = $db->send_query("
     SELECT
         s.showtime_id,
         s.show_date,
         s.show_time,
         s.price,
+        st.studio_name,
         m.movie_id,
         m.title,
-        m.poster,
-        st.studio_name
+        m.poster
     FROM showtimes s
-    JOIN movies m
-        ON s.movie_id = m.movie_id
-    JOIN studios st
-        ON s.studio_id = st.studio_id
+    JOIN movies m ON s.movie_id = m.movie_id
+    JOIN studios st ON s.studio_id = st.studio_id
     WHERE s.show_date = $1
     ORDER BY s.show_time ASC
 ", [$selected_date]);
 
-$showtimes = $showtime_result['data'] ?? [];
+$showtimes = $showtimes_result['data'] ?? [];
 
-// Mengambil film yang tanggal rilisnya masih akan datang.
+// Mengambil film yang tanggal rilisnya belum tiba.
 $coming_result = $db->send_query("
     SELECT
-        m.*,
+        m.movie_id,
+        m.title,
+        m.description,
+        m.duration,
+        m.release_date,
+        m.poster,
         g.genre_name
     FROM movies m
-    LEFT JOIN genres g
-        ON m.genre_id = g.genre_id
+    LEFT JOIN genres g ON m.genre_id = g.genre_id
     WHERE m.release_date > CURRENT_DATE
     ORDER BY m.release_date ASC
 ");
 
 $coming_movies = $coming_result['data'] ?? [];
+
+// Membuat daftar tujuh tanggal untuk jadwal.
+$dates = [];
+
+for ($i = 0; $i < 7; $i++) {
+    $date = date('Y-m-d', strtotime("+$i day"));
+    $dates[] = $date;
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>HIMTI MOVIE - Surabaya</title>
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
     <style>
 
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
         }
 
         body {
-            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
             background: #080808;
-            color: #ffffff;
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         a {
             text-decoration: none;
-            color: inherit;
         }
 
-        /* Navbar untuk navigasi utama website. */
-
-        .navbar {
-            height: 75px;
+        /* Navbar menampilkan identitas website dan menu utama. */
+        .navbar-custom {
             background: #050505;
-            border-bottom: 1px solid #222;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 60px;
+            border-bottom: 1px solid #252525;
+            padding: 18px 5%;
             position: sticky;
             top: 0;
             z-index: 1000;
         }
 
-        .logo {
+        .brand {
+            color: #e50914;
             font-size: 25px;
             font-weight: 900;
-            letter-spacing: 2px;
-            color: #ffffff;
+            letter-spacing: 1px;
         }
 
-        .logo span {
+        .brand:hover {
+            color: #ff1b26;
+        }
+
+        .nav-link-custom {
+            color: #ddd;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: 25px;
+            transition: .2s;
+        }
+
+        .nav-link-custom:hover {
             color: #e50914;
         }
 
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 35px;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        .nav-menu a {
-            color: #cccccc;
-            transition: 0.2s;
-        }
-
-        .nav-menu a:hover {
-            color: #ffffff;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
         .login-btn {
-            background: #e50914;
-            padding: 11px 20px;
-            border-radius: 3px;
-            color: white !important;
+            border: 1px solid #e50914;
+            color: #fff;
+            padding: 8px 17px;
+            margin-left: 20px;
             font-size: 12px;
             font-weight: bold;
         }
 
         .login-btn:hover {
-            background: #b20710;
+            background: #e50914;
+            color: #fff;
+        }
+
+        .register-btn {
+            color: #ddd;
+            margin-left: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .register-btn:hover {
+            color: #e50914;
+        }
+
+        .admin-btn {
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 14px;
+            margin-left: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .admin-btn:hover {
+            border-color: #e50914;
+            color: #e50914;
         }
 
         /* Hero menampilkan gambar utama dan informasi singkat website. */
-
         .hero {
             min-height: 570px;
             position: relative;
-            overflow: hidden;
             display: flex;
             align-items: center;
+            overflow: hidden;
+            background: #090909;
         }
 
-        .hero-bg {
+        .hero-image {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0.45;
+            opacity: .45;
         }
 
         .hero-overlay {
@@ -207,9 +234,9 @@ $coming_movies = $coming_result['data'] ?? [];
             background:
                 linear-gradient(
                     90deg,
-                    rgba(0,0,0,0.95) 0%,
-                    rgba(0,0,0,0.75) 45%,
-                    rgba(0,0,0,0.35) 100%
+                    rgba(0,0,0,.95) 0%,
+                    rgba(0,0,0,.72) 45%,
+                    rgba(0,0,0,.25) 100%
                 );
         }
 
@@ -217,114 +244,113 @@ $coming_movies = $coming_result['data'] ?? [];
             position: relative;
             z-index: 2;
             max-width: 650px;
-            margin-left: 8%;
+            padding: 80px 5%;
         }
 
-        .location {
+        .hero-location {
             color: #e50914;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
-            letter-spacing: 2px;
-            margin-bottom: 20px;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
         }
 
-        .hero h1 {
-            font-size: 65px;
-            line-height: 0.95;
-            margin-bottom: 25px;
+        .hero-title {
+            font-size: clamp(48px, 7vw, 90px);
+            line-height: .95;
             font-weight: 900;
+            margin: 0 0 20px;
         }
 
-        .hero h1 span {
+        .hero-title span {
             color: #e50914;
         }
 
-        .hero p {
-            color: #cccccc;
+        .hero-text {
+            color: #ccc;
+            max-width: 530px;
+            font-size: 16px;
             line-height: 1.7;
-            max-width: 520px;
-            margin-bottom: 30px;
         }
 
         .hero-btn {
             display: inline-block;
+            margin-top: 25px;
             background: #e50914;
-            padding: 15px 28px;
+            color: #fff;
+            padding: 13px 25px;
             font-size: 13px;
             font-weight: bold;
-            border-radius: 3px;
         }
 
         .hero-btn:hover {
-            background: #b20710;
+            background: #b80710;
+            color: #fff;
         }
 
         /* Container mengatur lebar konten utama website. */
-
-        .container {
-            width: 88%;
+        .container-custom {
+            width: 90%;
             max-width: 1250px;
             margin: auto;
         }
 
-        .section {
-            padding: 70px 0;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Section title menampilkan judul setiap bagian website. */
+        .section-title {
             margin-bottom: 30px;
         }
 
-        .section-title {
+        .section-title h2 {
             font-size: 30px;
             font-weight: 900;
+            margin: 0;
         }
 
         .section-title span {
             color: #e50914;
         }
 
-        /* Filter genre digunakan untuk menyaring film berdasarkan genre. */
+        .section-title p {
+            color: #777;
+            margin-top: 8px;
+            font-size: 13px;
+        }
 
-        .genre-list {
+        /* Filter genre digunakan untuk menyaring film berdasarkan genre. */
+        .genre-filter {
             display: flex;
-            gap: 10px;
             flex-wrap: wrap;
+            gap: 8px;
             margin-bottom: 30px;
         }
 
         .genre-btn {
             border: 1px solid #333;
-            background: #111;
             color: #aaa;
-            padding: 9px 16px;
-            border-radius: 3px;
+            padding: 8px 15px;
             font-size: 12px;
+            font-weight: bold;
         }
 
         .genre-btn:hover,
         .genre-btn.active {
             background: #e50914;
-            color: white;
             border-color: #e50914;
+            color: #fff;
         }
 
-        /* Movie grid menampilkan daftar film dalam bentuk kartu. */
-
+        /* Movie grid menampilkan daftar film dalam bentuk kartu lengkap dengan poster. */
         .movie-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 25px;
+            gap: 22px;
         }
 
         .movie-card {
             background: #111;
             border: 1px solid #222;
             overflow: hidden;
-            transition: 0.25s;
+            transition: .25s;
         }
 
         .movie-card:hover {
@@ -332,726 +358,879 @@ $coming_movies = $coming_result['data'] ?? [];
             border-color: #e50914;
         }
 
-        .poster {
+        .movie-poster {
             width: 100%;
             height: 350px;
+            background: #171717;
+            overflow: hidden;
+        }
+
+        .movie-poster img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            background: #1b1b1b;
+            display: block;
+        }
+
+        .no-poster {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 13px;
         }
 
         .movie-info {
             padding: 18px;
         }
 
-        .movie-title {
+        .movie-info h3 {
             font-size: 17px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 9px;
         }
 
         .movie-genre {
-            color: #999;
+            color: #e50914;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .movie-duration {
+            color: #777;
             font-size: 12px;
             margin-bottom: 15px;
         }
 
-        .movie-btn {
+        .detail-btn {
             display: inline-block;
-            color: #ffffff;
-            border: 1px solid #e50914;
-            padding: 9px 13px;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 12px;
             font-size: 11px;
             font-weight: bold;
         }
 
-        .movie-btn:hover {
+        .detail-btn:hover {
             background: #e50914;
+            border-color: #e50914;
         }
 
         /* Search digunakan untuk mencari film berdasarkan judul. */
-
         .search-box {
-            margin-bottom: 35px;
+            margin-bottom: 30px;
         }
 
-        .search-box input {
+        .search-input {
             width: 100%;
+            max-width: 450px;
             background: #111;
+            color: #fff;
             border: 1px solid #333;
-            color: white;
-            padding: 15px;
+            padding: 13px 17px;
             outline: none;
         }
 
-        .search-box input:focus {
+        .search-input:focus {
             border-color: #e50914;
         }
 
         /* Date list digunakan untuk memilih tanggal jadwal film. */
-
         .date-list {
             display: flex;
             gap: 10px;
             overflow-x: auto;
             padding-bottom: 10px;
+            margin-bottom: 25px;
         }
 
-        .date-item {
+        .date-btn {
             min-width: 90px;
-            padding: 15px 10px;
             text-align: center;
-            background: #111;
             border: 1px solid #333;
+            color: #aaa;
+            padding: 10px;
+            font-size: 12px;
         }
 
-        .date-item.active {
+        .date-btn strong {
+            display: block;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .date-btn:hover,
+        .date-btn.active {
             background: #e50914;
             border-color: #e50914;
+            color: #fff;
         }
 
-        .date-day {
-            display: block;
-            font-size: 11px;
-            color: #aaa;
-            margin-bottom: 5px;
-        }
-
-        .date-number {
-            font-size: 20px;
-            font-weight: bold;
+        .date-btn:hover strong,
+        .date-btn.active strong {
+            color: #fff;
         }
 
         /* Schedule menampilkan jadwal, studio, harga, dan waktu film. */
+        .schedule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
 
-        .schedule-card {
+        .schedule-item {
             background: #111;
             border: 1px solid #222;
-            padding: 20px;
-            margin-bottom: 15px;
+            padding: 18px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 20px;
         }
 
-        .schedule-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 8px;
+        .schedule-movie {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 0;
         }
 
-        .schedule-meta {
-            color: #888;
+        .schedule-poster {
+            width: 55px;
+            height: 75px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .schedule-movie h3 {
+            font-size: 16px;
+            margin: 0 0 5px;
+        }
+
+        .schedule-movie p {
+            margin: 0;
+            color: #777;
             font-size: 12px;
+        }
+
+        .schedule-details {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .studio {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .price {
+            color: #fff;
+            font-weight: bold;
+            font-size: 13px;
         }
 
         .time-btn {
             display: inline-block;
-            border: 1px solid #e50914;
+            background: #e50914;
+            color: #fff;
             padding: 10px 15px;
-            color: #ffffff;
             font-size: 12px;
-            margin-left: 7px;
+            font-weight: bold;
+            min-width: 70px;
+            text-align: center;
         }
 
         .time-btn:hover {
-            background: #e50914;
+            background: #b80710;
+            color: #fff;
         }
 
-        .price {
+        /* Coming soon menampilkan film yang tanggal rilisnya belum tiba. */
+        .coming-section {
+            background: #0d0d0d;
+        }
+
+        .coming-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 22px;
+        }
+
+        .coming-card {
+            background: #111;
+            border: 1px solid #222;
+            overflow: hidden;
+        }
+
+        .coming-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .coming-info {
+            padding: 17px;
+        }
+
+        .coming-info h3 {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .release-date {
+            color: #e50914;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Cinema section menampilkan identitas lokasi HIMTI MOVIE di Surabaya. */
+        .cinema-section {
+            padding: 80px 0;
+            background: #0a0a0a;
+            border-top: 1px solid #1d1d1d;
+        }
+
+        .cinema-box {
+            border: 1px solid #292929;
+            padding: 40px;
+            background: #101010;
+        }
+
+        .cinema-box h2 {
+            font-size: 40px;
+            font-weight: 900;
+            margin-bottom: 5px;
+        }
+
+        .cinema-box h2 span {
+            color: #e50914;
+        }
+
+        .cinema-location {
             color: #e50914;
             font-weight: bold;
-            margin-top: 7px;
+            letter-spacing: 2px;
             font-size: 13px;
         }
 
-        /* Cinema section menampilkan informasi lokasi bioskop. */
-
-        .cinema-box {
-            background: #111;
-            border-left: 4px solid #e50914;
-            padding: 30px;
-        }
-
-        .cinema-box h3 {
-            font-size: 25px;
-            margin-bottom: 10px;
-        }
-
         .cinema-box p {
-            color: #999;
-            line-height: 1.6;
+            color: #888;
+            max-width: 650px;
+            line-height: 1.7;
+            margin-top: 20px;
         }
 
         /* Footer menampilkan informasi penutup website. */
-
         footer {
-            background: #030303;
+            background: #050505;
             border-top: 1px solid #222;
-            padding: 50px 0;
-            margin-top: 50px;
+            padding: 35px 0;
         }
 
         .footer-content {
             display: flex;
             justify-content: space-between;
-            gap: 40px;
+            align-items: center;
+            gap: 20px;
         }
 
-        .footer-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 10px;
+        .footer-brand {
+            color: #e50914;
+            font-weight: 900;
         }
 
         .footer-text {
-            color: #777;
+            color: #666;
             font-size: 12px;
-            line-height: 1.7;
-        }
-
-        .copyright {
-            margin-top: 35px;
-            padding-top: 20px;
-            border-top: 1px solid #222;
-            color: #555;
-            font-size: 11px;
         }
 
         /* Tampilan website disesuaikan untuk ukuran layar yang lebih kecil. */
+        @media (max-width: 992px) {
 
-        @media (max-width: 900px) {
-            .navbar {
-                padding: 0 25px;
+            .movie-grid,
+            .coming-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
 
-            .nav-menu {
-                display: none;
+            .schedule-item {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
-            .movie-grid {
+            .schedule-details {
+                width: 100%;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+
+            .movie-grid,
+            .coming-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .hero h1 {
-                font-size: 48px;
+            .movie-poster {
+                height: 300px;
             }
-        }
 
-        @media (max-width: 600px) {
-            .movie-grid {
-                grid-template-columns: 1fr;
+            .hero {
+                min-height: 500px;
             }
 
             .hero-content {
-                margin-left: 6%;
-                margin-right: 6%;
+                padding: 60px 5%;
             }
 
-            .hero h1 {
-                font-size: 40px;
-            }
-
-            .schedule-card {
-                display: block;
-            }
-
-            .time-btn {
-                display: inline-block;
-                margin: 10px 5px 0 0;
+            .nav-link-custom {
+                margin-left: 0;
+                margin-right: 15px;
             }
 
             .footer-content {
-                display: block;
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
+
+        @media (max-width: 500px) {
+
+            .movie-grid,
+            .coming-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .movie-poster {
+                height: 400px;
+            }
+
+            .schedule-movie {
+                width: 100%;
+            }
+
+            .schedule-details {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
     </style>
 </head>
 
 <body>
 
-<nav class="navbar">
+    <!-- Navbar untuk navigasi utama website. -->
+    <nav class="navbar-custom">
+        <div class="container-fluid">
 
-    <a href="index.php" class="logo">
-        HIMTI<span>MOVIE</span>
-    </a>
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
 
-    <div class="nav-menu">
-        <a href="#cinemas">CINEMAS</a>
-        <a href="#movies">MOVIES</a>
-        <a href="#showtimes">SHOWTIMES</a>
-    </div>
-
-    <div class="nav-right">
-
-        <?php if ($is_logged_in): ?>
-
-            <span style="color:#aaa;font-size:13px;">
-                Hi, <?= htmlspecialchars($username) ?>
-            </span>
-
-            <a href="logout.php" class="login-btn">
-                LOG OUT
-            </a>
-
-        <?php else: ?>
-
-            <a href="login.php" class="login-btn">
-                LOGIN
-            </a>
-
-            <a href="register.php">
-                REGISTER
-            </a>
-
-        <?php endif; ?>
-
-    </div>
-
-</nav>
-
-<section class="hero">
-
-    <img
-        src="assets/hero-cinema.png"
-        class="hero-bg"
-        alt="Cinema"
-    >
-
-    <div class="hero-overlay"></div>
-
-    <div class="hero-content">
-
-        <div class="location">
-            SURABAYA
-        </div>
-
-        <h1>
-            EXPERIENCE<br>
-            <span>THE MOVIES.</span>
-        </h1>
-
-        <p>
-            Discover the latest movies, check showtimes,
-            and book your favorite seats at HIMTI MOVIE.
-        </p>
-
-        <a href="#movies" class="hero-btn">
-            EXPLORE MOVIES
-        </a>
-
-    </div>
-
-</section>
-
-<section class="section" id="movies">
-
-    <div class="container">
-
-        <div class="section-header">
-            <h2 class="section-title">
-                NOW <span>SHOWING</span>
-            </h2>
-        </div>
-
-        <div class="search-box">
-            <input
-                type="text"
-                id="movieSearch"
-                placeholder="Search movies..."
-            >
-        </div>
-
-        <div class="genre-list">
-
-            <a
-                href="index.php"
-                class="genre-btn <?= $selected_genre === '' ? 'active' : '' ?>"
-            >
-                ALL
-            </a>
-
-            <?php foreach ($genres as $genre): ?>
-
-                <a
-                    href="index.php?genre=<?= $genre['genre_id'] ?>"
-                    class="genre-btn <?= $selected_genre == $genre['genre_id'] ? 'active' : '' ?>"
-                >
-                    <?= htmlspecialchars($genre['genre_name']) ?>
+                <a href="index.php" class="brand">
+                    HIMTI MOVIE
                 </a>
 
-            <?php endforeach; ?>
+                <div class="d-flex align-items-center flex-wrap">
 
-        </div>
+                    <a href="#cinemas" class="nav-link-custom">
+                        CINEMAS
+                    </a>
 
-        <div class="movie-grid" id="movieGrid">
+                    <a href="#movies" class="nav-link-custom">
+                        MOVIES
+                    </a>
 
-            <?php if (!empty($movies)): ?>
+                    <a href="#showtimes" class="nav-link-custom">
+                        SHOWTIMES
+                    </a>
 
-                <?php foreach ($movies as $movie): ?>
+                    <?php if ($is_logged_in): ?>
 
-                    <div
-                        class="movie-card"
-                        data-title="<?= strtolower(htmlspecialchars($movie['title'])) ?>"
-                    >
+                        <span style="color:#aaa;font-size:13px;margin-left:20px;">
+                            Hi, <?= htmlspecialchars($username) ?>
+                        </span>
 
-                        <?php if (!empty($movie['poster'])): ?>
+                        <?php if (
+                            isset($_SESSION['user']['role']) &&
+                            $_SESSION['user']['role'] === 'admin'
+                        ): ?>
 
-                            <img
-                                src="<?= htmlspecialchars($movie['poster']) ?>"
-                                alt="<?= htmlspecialchars($movie['title']) ?>"
-                                class="poster"
-                            >
-
-                        <?php else: ?>
-
-                            <div
-                                class="poster"
-                                style="
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    color:#555;
-                                "
-                            >
-                                NO POSTER
-                            </div>
+                            <a href="admin/index.php" class="admin-btn">
+                                ADMIN DASHBOARD
+                            </a>
 
                         <?php endif; ?>
 
-                        <div class="movie-info">
+                        <a href="logout.php" class="login-btn">
+                            LOG OUT
+                        </a>
 
-                            <div class="movie-title">
-                                <?= htmlspecialchars($movie['title']) ?>
-                            </div>
+                    <?php else: ?>
 
-                            <div class="movie-genre">
+                        <a href="login.php" class="login-btn">
+                            LOGIN
+                        </a>
 
-                                <?= htmlspecialchars(
-                                    $movie['genre_name'] ?? 'Unknown Genre'
-                                ) ?>
+                        <a href="register.php" class="register-btn">
+                            REGISTER
+                        </a>
 
-                                <?php if (!empty($movie['duration'])): ?>
+                    <?php endif; ?>
 
-                                    • <?= htmlspecialchars($movie['duration']) ?> min
+                </div>
+
+            </div>
+
+        </div>
+    </nav>
+
+
+    <!-- Hero menampilkan gambar utama dan informasi singkat website. -->
+    <section class="hero">
+
+        <img
+            src="assets/hero-cinema.png"
+            class="hero-image"
+            alt="Cinema"
+        >
+
+        <div class="hero-overlay"></div>
+
+        <div class="hero-content">
+
+            <div class="hero-location">
+                SURABAYA
+            </div>
+
+            <h1 class="hero-title">
+                HIMTI<br>
+                <span>MOVIE</span>
+            </h1>
+
+            <p class="hero-text">
+                Your destination for movies, schedules, and cinema experiences.
+                Find your favorite movie and book your ticket easily.
+            </p>
+
+            <a href="#movies" class="hero-btn">
+                EXPLORE MOVIES
+            </a>
+
+        </div>
+
+    </section>
+
+
+    <!-- Container utama menampung seluruh konten film dan jadwal. -->
+    <main class="container-custom">
+
+
+        <!-- Bagian film menampilkan film yang tersedia di database. -->
+        <section id="movies" style="padding:80px 0;">
+
+            <div class="section-title">
+
+                <h2>
+                    NOW <span>SHOWING</span>
+                </h2>
+
+                <p>
+                    Discover movies currently available at HIMTI MOVIE.
+                </p>
+
+            </div>
+
+
+            <!-- Search digunakan untuk mencari film berdasarkan judul. -->
+            <div class="search-box">
+
+                <input
+                    type="text"
+                    id="movieSearch"
+                    class="search-input"
+                    placeholder="Search movies..."
+                >
+
+            </div>
+
+
+            <!-- Filter genre digunakan untuk menyaring film berdasarkan genre. -->
+            <div class="genre-filter">
+
+                <a
+                    href="index.php"
+                    class="genre-btn <?= $selected_genre === '' ? 'active' : '' ?>"
+                >
+                    ALL
+                </a>
+
+                <?php foreach ($genres as $genre): ?>
+
+                    <a
+                        href="index.php?genre=<?= $genre['genre_id'] ?>"
+                        class="genre-btn <?= $selected_genre == $genre['genre_id'] ? 'active' : '' ?>"
+                    >
+                        <?= htmlspecialchars($genre['genre_name']) ?>
+                    </a>
+
+                <?php endforeach; ?>
+
+            </div>
+
+
+            <!-- Movie grid menampilkan poster, judul, genre, durasi, dan sinopsis film. -->
+            <div class="movie-grid" id="movieGrid">
+
+                <?php if (empty($movies)): ?>
+
+                    <p style="color:#777;">
+                        No movies available.
+                    </p>
+
+                <?php else: ?>
+
+                    <?php foreach ($movies as $movie): ?>
+
+                        <div
+                            class="movie-card"
+                            data-title="<?= htmlspecialchars(strtolower($movie['title'])) ?>"
+                        >
+
+                            <div class="movie-poster">
+
+                                <?php if (!empty($movie['poster'])): ?>
+
+                                    <img
+                                        src="<?= htmlspecialchars($movie['poster']) ?>"
+                                        alt="<?= htmlspecialchars($movie['title']) ?>"
+                                    >
+
+                                <?php else: ?>
+
+                                    <div class="no-poster">
+                                        NO POSTER
+                                    </div>
 
                                 <?php endif; ?>
 
                             </div>
 
-                            <a
-                                href="movie_detail.php?id=<?= $movie['movie_id'] ?>"
-                                class="movie-btn"
-                            >
-                                READ SYNOPSIS
-                            </a>
+
+                            <div class="movie-info">
+
+                                <h3>
+                                    <?= htmlspecialchars($movie['title']) ?>
+                                </h3>
+
+                                <p class="movie-genre">
+                                    <?= htmlspecialchars($movie['genre_name'] ?? 'Movie') ?>
+                                </p>
+
+                                <p class="movie-duration">
+                                    <?= htmlspecialchars($movie['duration']) ?> min
+                                </p>
+
+                                <a
+                                    href="movie_detail.php?id=<?= $movie['movie_id'] ?>"
+                                    class="detail-btn"
+                                >
+                                    READ SYNOPSIS
+                                </a>
+
+                            </div>
 
                         </div>
 
-                    </div>
+                    <?php endforeach; ?>
+
+                <?php endif; ?>
+
+            </div>
+
+        </section>
+
+
+        <!-- Jadwal menampilkan tanggal dan jam tayang film dari database. -->
+        <section id="showtimes" style="padding:20px 0 90px;">
+
+            <div class="section-title">
+
+                <h2>
+                    MOVIE <span>SHOWTIMES</span>
+                </h2>
+
+                <p>
+                    Choose your date and find available movie schedules.
+                </p>
+
+            </div>
+
+
+            <!-- Date list digunakan untuk memilih tanggal jadwal film. -->
+            <div class="date-list">
+
+                <?php foreach ($dates as $date): ?>
+
+                    <a
+                        href="index.php?date=<?= $date ?>"
+                        class="date-btn <?= $selected_date === $date ? 'active' : '' ?>"
+                    >
+
+                        <?= date('D', strtotime($date)) ?>
+
+                        <strong>
+                            <?= date('d', strtotime($date)) ?>
+                        </strong>
+
+                        <?= date('M', strtotime($date)) ?>
+
+                    </a>
 
                 <?php endforeach; ?>
 
-            <?php else: ?>
+            </div>
 
-                <p style="color:#777;">
-                    No movies available.
-                </p>
 
-            <?php endif; ?>
+            <!-- Schedule menampilkan poster kecil, film, studio, harga, dan jam tayang. -->
+            <div class="schedule-list">
 
-        </div>
+                <?php if (empty($showtimes)): ?>
 
-    </div>
-
-</section>
-
-<section class="section" id="showtimes">
-
-    <div class="container">
-
-        <div class="section-header">
-
-            <h2 class="section-title">
-                MOVIE <span>SHOWTIMES</span>
-            </h2>
-
-        </div>
-
-        <div class="date-list">
-
-            <?php for ($i = 0; $i < 7; $i++): ?>
-
-                <?php
-                $date = date(
-                    'Y-m-d',
-                    strtotime("+$i days")
-                );
-
-                $day = strtoupper(
-                    date('D', strtotime($date))
-                );
-
-                $number = date(
-                    'd',
-                    strtotime($date)
-                );
-                ?>
-
-                <a
-                    href="index.php?date=<?= $date ?>#showtimes"
-                    class="date-item <?= $selected_date === $date ? 'active' : '' ?>"
-                >
-
-                    <span class="date-day">
-                        <?= $day ?>
-                    </span>
-
-                    <span class="date-number">
-                        <?= $number ?>
-                    </span>
-
-                </a>
-
-            <?php endfor; ?>
-
-        </div>
-
-        <div style="margin-top:30px;">
-
-            <?php if (!empty($showtimes)): ?>
-
-                <?php foreach ($showtimes as $showtime): ?>
-
-                    <div class="schedule-card">
-
-                        <div>
-
-                            <div class="schedule-title">
-                                <?= htmlspecialchars($showtime['title']) ?>
-                            </div>
-
-                            <div class="schedule-meta">
-                                <?= htmlspecialchars($showtime['studio_name']) ?>
-                            </div>
-
-                            <div class="price">
-                                Rp <?= number_format(
-                                    (float)$showtime['price'],
-                                    0,
-                                    ',',
-                                    '.'
-                                ) ?>
-                            </div>
-
-                        </div>
-
-                        <div>
-
-                            <a
-                                href="checkout.php?showtime_id=<?= $showtime['showtime_id'] ?>"
-                                class="time-btn"
-                            >
-                                <?= date(
-                                    'H:i',
-                                    strtotime($showtime['show_time'])
-                                ) ?>
-                            </a>
-
-                        </div>
-
+                    <div style="
+                        background:#111;
+                        border:1px solid #222;
+                        padding:25px;
+                        color:#777;
+                    ">
+                        No showtimes available for
+                        <?= date('d M Y', strtotime($selected_date)) ?>.
                     </div>
 
-                <?php endforeach; ?>
+                <?php else: ?>
 
-            <?php else: ?>
+                    <?php foreach ($showtimes as $show): ?>
 
-                <p style="color:#777;">
-                    No showtimes available for this date.
-                </p>
+                        <div class="schedule-item">
 
-            <?php endif; ?>
+                            <div class="schedule-movie">
 
-        </div>
+                                <?php if (!empty($show['poster'])): ?>
 
-    </div>
+                                    <img
+                                        src="<?= htmlspecialchars($show['poster']) ?>"
+                                        class="schedule-poster"
+                                        alt="<?= htmlspecialchars($show['title']) ?>"
+                                    >
 
-</section>
+                                <?php endif; ?>
 
-<?php if (!empty($coming_movies)): ?>
+                                <div>
 
-<section class="section">
+                                    <h3>
+                                        <?= htmlspecialchars($show['title']) ?>
+                                    </h3>
 
-    <div class="container">
+                                    <p>
+                                        <?= htmlspecialchars($show['studio_name']) ?>
+                                    </p>
 
-        <div class="section-header">
+                                </div>
 
-            <h2 class="section-title">
-                COMING <span>SOON</span>
-            </h2>
+                            </div>
 
-        </div>
 
-        <div class="movie-grid">
+                            <div class="schedule-details">
 
-            <?php foreach ($coming_movies as $movie): ?>
+                                <span class="studio">
+                                    <?= htmlspecialchars($show['studio_name']) ?>
+                                </span>
 
-                <div class="movie-card">
+                                <span class="price">
+                                    Rp <?= number_format($show['price'], 0, ',', '.') ?>
+                                </span>
 
-                    <?php if (!empty($movie['poster'])): ?>
+                                <a
+                                    href="checkout.php?showtime_id=<?= $show['showtime_id'] ?>"
+                                    class="time-btn"
+                                >
+                                    <?= date('H:i', strtotime($show['show_time'])) ?>
+                                </a>
 
-                        <img
-                            src="<?= htmlspecialchars($movie['poster']) ?>"
-                            alt="<?= htmlspecialchars($movie['title']) ?>"
-                            class="poster"
-                        >
+                            </div>
 
-                    <?php else: ?>
-
-                        <div
-                            class="poster"
-                            style="
-                                display:flex;
-                                align-items:center;
-                                justify-content:center;
-                                color:#555;
-                            "
-                        >
-                            NO POSTER
                         </div>
 
-                    <?php endif; ?>
+                    <?php endforeach; ?>
 
-                    <div class="movie-info">
+                <?php endif; ?>
 
-                        <div class="movie-title">
-                            <?= htmlspecialchars($movie['title']) ?>
-                        </div>
+            </div>
 
-                        <div class="movie-genre">
-                            <?= htmlspecialchars(
-                                $movie['genre_name'] ?? 'Unknown Genre'
-                            ) ?>
-                        </div>
+        </section>
 
-                        <div
-                            style="
-                                color:#e50914;
-                                font-size:12px;
-                                margin-top:10px;
-                            "
-                        >
-                            Release:
-                            <?= date(
-                                'd M Y',
-                                strtotime($movie['release_date'])
-                            ) ?>
-                        </div>
 
-                    </div>
+    </main>
+
+
+    <!-- Coming soon menampilkan film yang belum dirilis. -->
+    <?php if (!empty($coming_movies)): ?>
+
+        <section class="coming-section" style="padding:80px 0;">
+
+            <div class="container-custom">
+
+                <div class="section-title">
+
+                    <h2>
+                        COMING <span>SOON</span>
+                    </h2>
+
+                    <p>
+                        Upcoming movies coming to HIMTI MOVIE.
+                    </p>
 
                 </div>
 
-            <?php endforeach; ?>
+
+                <!-- Coming grid menampilkan poster dan tanggal rilis film mendatang. -->
+                <div class="coming-grid">
+
+                    <?php foreach ($coming_movies as $movie): ?>
+
+                        <div class="coming-card">
+
+                            <?php if (!empty($movie['poster'])): ?>
+
+                                <img
+                                    src="<?= htmlspecialchars($movie['poster']) ?>"
+                                    alt="<?= htmlspecialchars($movie['title']) ?>"
+                                >
+
+                            <?php else: ?>
+
+                                <div
+                                    class="no-poster"
+                                    style="height:300px;"
+                                >
+                                    NO POSTER
+                                </div>
+
+                            <?php endif; ?>
+
+
+                            <div class="coming-info">
+
+                                <h3>
+                                    <?= htmlspecialchars($movie['title']) ?>
+                                </h3>
+
+                                <div class="release-date">
+                                    RELEASE:
+                                    <?= date(
+                                        'd M Y',
+                                        strtotime($movie['release_date'])
+                                    ) ?>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    <?php endif; ?>
+
+
+    <!-- Cinema section menampilkan identitas lokasi HIMTI MOVIE di Surabaya. -->
+    <section id="cinemas" class="cinema-section">
+
+        <div class="container-custom">
+
+            <div class="cinema-box">
+
+                <div class="cinema-location">
+                    SURABAYA
+                </div>
+
+                <h2>
+                    HIMTI <span>MOVIE</span>
+                </h2>
+
+                <p>
+                    Experience your favorite movies with HIMTI MOVIE.
+                    Find movie schedules, choose your preferred showtime,
+                    and book your ticket easily.
+                </p>
+
+            </div>
 
         </div>
 
-    </div>
+    </section>
 
-</section>
 
-<?php endif; ?>
+    <!-- Footer menampilkan informasi penutup website. -->
+    <footer>
 
-<section class="section" id="cinemas">
+        <div class="container-custom">
 
-    <div class="container">
+            <div class="footer-content">
 
-        <div class="section-header">
-
-            <h2 class="section-title">
-                OUR <span>CINEMA</span>
-            </h2>
-
-        </div>
-
-        <div class="cinema-box">
-
-            <h3>
-                HIMTI MOVIE — SURABAYA
-            </h3>
-
-            <p>
-                Enjoy the latest movies with comfortable studios
-                and convenient showtimes in Surabaya.
-            </p>
-
-        </div>
-
-    </div>
-
-</section>
-
-<footer>
-
-    <div class="container">
-
-        <div class="footer-content">
-
-            <div>
-
-                <div class="footer-title">
+                <div class="footer-brand">
                     HIMTI MOVIE
                 </div>
 
                 <div class="footer-text">
-                    Your movie experience starts here.
-                </div>
-
-            </div>
-
-            <div>
-
-                <div class="footer-title">
-                    SURABAYA
-                </div>
-
-                <div class="footer-text">
-                    Movies • Showtimes • Tickets
+                    © <?= date('Y') ?> HIMTI MOVIE — SURABAYA
                 </div>
 
             </div>
 
         </div>
 
-        <div class="copyright">
-            © <?= date('Y') ?> HIMTI MOVIE. All Rights Reserved.
-        </div>
+    </footer>
 
-    </div>
 
-</footer>
+    <!-- Script search digunakan untuk menyaring kartu film berdasarkan judul. -->
+    <script>
 
-<script>
-    const searchInput = document.getElementById('movieSearch');
-    const movieCards = document.querySelectorAll('.movie-card');
+        const searchInput = document.getElementById('movieSearch');
+        const movieCards = document.querySelectorAll('.movie-card');
 
-    searchInput.addEventListener('input', function () {
+        if (searchInput) {
 
-        const keyword = this.value.toLowerCase().trim();
+            searchInput.addEventListener('input', function () {
 
-        movieCards.forEach(function (card) {
+                const keyword = this.value.toLowerCase();
 
-            const title = card.dataset.title || '';
+                movieCards.forEach(function (card) {
 
-            if (title.includes(keyword)) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
+                    const title = card.dataset.title;
 
-        });
+                    if (title.includes(keyword)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
 
-    });
-</script>
+                });
+
+            });
+
+        }
+
+    </script>
 
 </body>
 </html>
