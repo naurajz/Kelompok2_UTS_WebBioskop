@@ -1,13 +1,4 @@
 <?php
-/**
- * File     : admin/index.php
- * Card     : [Kode card]
- * Tugas    : Dashboard admin: ringkasan data dan menu ke halaman kelola film, genre, jadwal.
- * PIC      : [Nama PIC]
- * NIM      : [NIM]
- * Deadline : [Tanggal deadline]
- */
-
 require_once __DIR__ . '/../includes/admin_guard.php';
 
 $db = new DBConnection();
