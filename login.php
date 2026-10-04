@@ -1,4 +1,5 @@
 <?php
+
 /**
  * File     : login.php
  * Card     : Auth-01 Admin Login + Auth-04 Login Pengguna
@@ -12,7 +13,7 @@ require_once "bootstrap.php";
 // Jika user sudah login, langsung arahkan ke halaman yang sesuai berdasarkan role
 if (isset($_SESSION['user_id'])) {
     if ($_SESSION['role'] === 'admin') {
-        header("Location: admin/genre.php");
+        header("Location: admin/dashboard_admin.php");
     } else {
         header("Location: index.php");
     }
