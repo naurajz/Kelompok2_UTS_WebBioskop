@@ -29,377 +29,14 @@ $movies    = $showtime->getMovieOptions();
 $studios   = $showtime->getStudioOptions();
 $schedules = $showtime->getAll();
 ?>
-<!DOCTYPE html>
-<html lang="id">
+<?php
+$page_title = 'Kelola Jadwal Tayang';
+$base_url   = '../';
+$body_class = 'theme-dark';
+require_once __DIR__ . '/../includes/header.php';
+?>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kelola Jadwal Tayang - HIMTI MOVIE</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #080808;
-            color: #fff;
-            font-family: Arial, Helvetica, sans-serif;
-            padding-top: 72px;
-        }
-
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        /* ===== NAVBAR (sama seperti halaman utama) ===== */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 72px;
-            background: rgba(8, 8, 8, .96);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 55px;
-            z-index: 1000;
-            border-bottom: 1px solid #222;
-        }
-
-        .logo {
-            font-size: 25px;
-            font-weight: 900;
-        }
-
-        .logo span {
-            color: #e50914;
-        }
-
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .nav-menu a {
-            color: #ddd;
-            font-size: 14px;
-        }
-
-        .nav-menu a:hover,
-        .nav-menu a.active {
-            color: #e50914;
-        }
-
-        .nav-button {
-            background: #e50914;
-            color: #fff !important;
-            padding: 10px 20px;
-            border-radius: 7px;
-        }
-
-        .nav-button:hover {
-            background: #b80710;
-        }
-
-        /* ===== LAYOUT ===== */
-        .container {
-            max-width: 1200px;
-            margin: auto;
-            padding: 40px 24px 70px;
-        }
-
-        .dash-hero {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(90deg, rgba(0, 0, 0, .9), rgba(20, 20, 20, .9));
-            border: 1px solid #252525;
-            border-radius: 16px;
-            padding: 34px 40px;
-            margin-bottom: 30px;
-        }
-
-        .dash-hero::after {
-            content: "";
-            position: absolute;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: rgba(229, 9, 20, .12);
-            top: -110px;
-            right: -70px;
-        }
-
-        .dash-small {
-            color: #e50914;
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 4px;
-            margin-bottom: 10px;
-        }
-
-        .dash-title {
-            font-size: 38px;
-            font-weight: 900;
-            margin-bottom: 8px;
-        }
-
-        .dash-title span {
-            color: #e50914;
-        }
-
-        .dash-text {
-            color: #aaa;
-            position: relative;
-            z-index: 1;
-        }
-
-        .card {
-            background: #121212;
-            border: 1px solid #252525;
-            border-radius: 14px;
-            padding: 28px;
-            margin-bottom: 28px;
-        }
-
-        .card h2 {
-            font-size: 22px;
-            font-weight: 900;
-            margin-bottom: 22px;
-        }
-
-        .card h2 span {
-            color: #e50914;
-        }
-
-        /* ===== ALERT ===== */
-        .alert {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            padding: 14px 18px;
-            border-radius: 10px;
-            margin-bottom: 24px;
-            font-size: 14px;
-            border: 1px solid;
-        }
-
-        .alert-success {
-            background: rgba(46, 160, 67, .12);
-            border-color: rgba(46, 160, 67, .5);
-            color: #7ee287;
-        }
-
-        .alert-danger {
-            background: rgba(229, 9, 20, .12);
-            border-color: rgba(229, 9, 20, .5);
-            color: #ff7b82;
-        }
-
-        .alert-close {
-            background: none;
-            border: none;
-            color: inherit;
-            font-size: 20px;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        /* ===== FORM ===== */
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 4px 22px;
-        }
-
-        .col-half { grid-column: span 3; }
-        .col-third { grid-column: span 2; }
-        .col-full { grid-column: 1 / -1; }
-
-        label {
-            display: block;
-            margin: 10px 0 7px;
-            color: #bbb;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
-        input,
-        select {
-            width: 100%;
-            background: #181818;
-            color: #fff;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 11px 13px;
-            font-family: inherit;
-            font-size: 14px;
-            outline: none;
-            transition: .2s;
-            color-scheme: dark;
-        }
-
-        input:focus,
-        select:focus {
-            border-color: #e50914;
-            box-shadow: 0 0 0 3px rgba(229, 9, 20, .15);
-        }
-
-        select option {
-            background: #181818;
-        }
-
-        .btn-simpan {
-            background: #e50914;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 26px;
-            margin-top: 18px;
-            font-size: 14px;
-            font-weight: bold;
-            font-family: inherit;
-            cursor: pointer;
-            transition: .2s;
-        }
-
-        .btn-simpan:hover {
-            background: #b80710;
-        }
-
-        /* ===== TABLE ===== */
-        .table-wrap {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 620px;
-        }
-
-        th {
-            color: #e50914;
-            font-size: 12px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            background: #181818;
-        }
-
-        th,
-        td {
-            padding: 14px 12px;
-            border-bottom: 1px solid #252525;
-            text-align: left;
-            vertical-align: middle;
-            font-size: 14px;
-        }
-
-        tbody tr:hover {
-            background: #171717;
-        }
-
-        .text-end { text-align: right; }
-
-        .movie-name {
-            font-weight: bold;
-        }
-
-        .studio-badge {
-            display: inline-block;
-            background: rgba(229, 9, 20, .12);
-            border: 1px solid rgba(229, 9, 20, .4);
-            color: #ff6a72;
-            border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 12px;
-            white-space: nowrap;
-        }
-
-        .price {
-            color: #e50914;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-
-        .waktu {
-            white-space: nowrap;
-            color: #ccc;
-        }
-
-        .empty {
-            text-align: center;
-            color: #777;
-            padding: 40px !important;
-        }
-
-        .aksi form {
-            display: inline;
-        }
-
-        .btn-hapus {
-            display: inline-block;
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 8px 14px;
-            border-radius: 7px;
-            cursor: pointer;
-            transition: .2s;
-            background: transparent;
-            border: 1px solid #e50914;
-            color: #e50914;
-        }
-
-        .btn-hapus:hover {
-            background: #e50914;
-            color: #fff;
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 850px) {
-            .navbar { padding: 0 20px; }
-            .nav-menu { gap: 12px; }
-            .nav-menu a { font-size: 12px; }
-            .nav-button { padding: 8px 12px; }
-            .dash-hero { padding: 26px 22px; }
-            .dash-title { font-size: 30px; }
-            .card { padding: 20px; }
-            .col-half,
-            .col-third { grid-column: 1 / -1; }
-        }
-
-        @media (max-width: 650px) {
-            .nav-menu > a:not(.nav-button) { display: none; }
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- ===== NAVBAR ===== -->
-    <nav class="navbar">
-        <div class="logo">HIMTI <span>MOVIE</span></div>
-
-        <div class="nav-menu">
-            <a href="dashboard_admin.php">Dashboard</a>
-            <a href="movie.php">Film</a>
-            <a href="genre.php">Genre</a>
-            <a href="showtime.php" class="active">Jadwal</a>
-            <a href="orders.php">Pesanan</a>
-            <a href="../index.php">Website</a>
-            <a href="../logout.php" class="nav-button">Logout</a>
-        </div>
-    </nav>
-
-    <div class="container">
+<div class="admin-container">
 
         <div class="dash-hero">
             <div class="dash-small">ADMIN PANEL</div>
@@ -408,15 +45,15 @@ $schedules = $showtime->getAll();
         </div>
 
         <?php if ($message): ?>
-            <div class="alert alert-<?= $isSuccess ? 'success' : 'danger' ?>" role="alert">
+            <div class="flash flash-<?= $isSuccess ? 'success' : 'danger' ?>" role="alert">
                 <span><?= htmlspecialchars($message) ?></span>
-                <button type="button" class="alert-close" aria-label="Tutup"
+                <button type="button" class="flash-close" aria-label="Tutup"
                     onclick="this.parentElement.remove()">&times;</button>
             </div>
         <?php endif; ?>
 
         <!-- ===== FORM TAMBAH JADWAL ===== -->
-        <div class="card">
+        <div class="panel">
             <h2>Tambah <span>Jadwal</span></h2>
 
             <form method="post">
@@ -475,7 +112,7 @@ $schedules = $showtime->getAll();
         </div>
 
         <!-- ===== DAFTAR JADWAL ===== -->
-        <div class="card">
+        <div class="panel">
             <h2>Jadwal <span>Saat Ini</span> (<?= count($schedules) ?>)</h2>
 
             <div class="table-wrap">
@@ -493,9 +130,9 @@ $schedules = $showtime->getAll();
                         <?php foreach ($schedules as $row): ?>
                             <tr>
                                 <td class="movie-name"><?= htmlspecialchars($row['movie_title']) ?></td>
-                                <td><span class="studio-badge"><?= htmlspecialchars($row['studio_name']) ?></span></td>
+                                <td><span class="pill"><?= htmlspecialchars($row['studio_name']) ?></span></td>
                                 <td class="waktu"><?= date('d M Y', strtotime($row['show_date'])) ?>, <?= date('H:i', strtotime($row['show_time'])) ?> WIB</td>
-                                <td class="price">Rp <?= number_format((float)$row['price'], 0, ',', '.') ?></td>
+                                <td class="td-price">Rp <?= number_format((float)$row['price'], 0, ',', '.') ?></td>
                                 <td class="text-end aksi">
                                     <form method="post" onsubmit="return confirm('Hapus jadwal ini? Pesanan dan tiket terkait ikut terhapus.')">
                                         <input type="hidden" name="action" value="delete">
@@ -515,6 +152,4 @@ $schedules = $showtime->getAll();
 
     </div>
 
-</body>
-
-</html>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
