@@ -19,7 +19,11 @@ try {
 
     $db = new DBConnection();
 
-    // Mengambil daftar film dari database.
+
+    /* =====================================================
+       MOVIES
+    ===================================================== */
+
     $movie_query = "
         SELECT
             m.*,
@@ -37,7 +41,10 @@ try {
     }
 
 
-    // Mengambil daftar genre dari database.
+    /* =====================================================
+       GENRES
+    ===================================================== */
+
     $genre_query = "
         SELECT *
         FROM genres
@@ -51,7 +58,10 @@ try {
     }
 
 
-    // Mengambil jadwal film berdasarkan tanggal yang dipilih.
+    /* =====================================================
+       SCHEDULE SESUAI TANGGAL
+    ===================================================== */
+
     $schedule_query = "
         SELECT
             s.showtime_id,
@@ -82,7 +92,10 @@ try {
     }
 
 
-    // Mengambil film yang memiliki tanggal rilis setelah hari ini.
+    /* =====================================================
+       COMING SOON
+    ===================================================== */
+
     $coming_query = "
         SELECT
             m.*,
@@ -102,7 +115,10 @@ try {
     }
 
 
-    // Mengambil beberapa jadwal film terdekat dari hari ini.
+    /* =====================================================
+       UPCOMING SHOWTIMES
+    ===================================================== */
+
     $upcoming_query = "
         SELECT
             s.showtime_id,
@@ -138,18 +154,15 @@ try {
 }
 
 
-// Mengatur status login dan informasi pengguna.
-$is_logged_in =
-    isset($_SESSION['user']) ||
-    isset($_SESSION['user_id']);
+/* =====================================================
+   LOGIN
+===================================================== */
+
+$is_logged_in = isset($_SESSION['user_id']);
 
 $username =
     $_SESSION['user']['username']
     ?? 'Pengguna';
-
-$user_role =
-    $_SESSION['user']['role']
-    ?? '';
 
 ?>
 
@@ -173,7 +186,9 @@ $user_role =
 
     <style>
 
-        /* Mengatur tampilan dasar seluruh halaman. */
+        /* =====================================================
+           RESET
+        ===================================================== */
 
         * {
             margin: 0;
@@ -199,7 +214,9 @@ $user_role =
         }
 
 
-        /* Mengatur navbar bagian atas website. */
+        /* =====================================================
+           NAVBAR
+        ===================================================== */
 
         .top-bar {
             background: #050505;
@@ -293,11 +310,12 @@ $user_role =
 
         .login-btn:hover {
             background: #e50914;
-            color: #ffffff !important;
         }
 
 
-        /* Mengatur menu navigasi utama website. */
+        /* =====================================================
+           MENU
+        ===================================================== */
 
         .menu-bar {
             background: #0d0d0d;
@@ -329,7 +347,9 @@ $user_role =
         }
 
 
-        /* Mengatur hero dengan gambar cinema sebagai latar utama. */
+        /* =====================================================
+           HERO
+        ===================================================== */
 
         .hero {
             height: 620px;
@@ -343,10 +363,13 @@ $user_role =
         .hero-image {
             position: absolute;
             inset: 0;
+
             width: 100%;
             height: 100%;
+
             object-fit: cover;
             object-position: center;
+
             display: block;
         }
 
@@ -354,6 +377,7 @@ $user_role =
         .hero-overlay {
             position: absolute;
             inset: 0;
+
             background:
                 linear-gradient(
                     90deg,
@@ -368,26 +392,35 @@ $user_role =
         .hero-content {
             position: relative;
             z-index: 2;
+
             width: 88%;
             max-width: 1250px;
+
             margin: auto;
         }
 
 
         .hero-label {
             color: #e50914;
+
             font-size: 14px;
             font-weight: bold;
+
             letter-spacing: 3px;
+
             margin-bottom: 18px;
         }
 
 
         .hero h1 {
             font-size: 60px;
+
             font-weight: 900;
+
             line-height: 1;
+
             margin-bottom: 22px;
+
             max-width: 700px;
         }
 
@@ -399,9 +432,13 @@ $user_role =
 
         .hero p {
             color: #dddddd;
+
             line-height: 1.7;
+
             max-width: 550px;
+
             margin-bottom: 28px;
+
             font-size: 15px;
         }
 
@@ -414,11 +451,17 @@ $user_role =
 
         .btn-red {
             display: inline-block;
+
             background: #e50914;
+
             color: #ffffff;
+
             padding: 12px 24px;
+
             border-radius: 4px;
+
             font-size: 13px;
+
             font-weight: bold;
         }
 
@@ -431,11 +474,17 @@ $user_role =
 
         .btn-outline {
             display: inline-block;
+
             border: 1px solid #777777;
+
             color: #ffffff;
+
             padding: 11px 24px;
+
             border-radius: 4px;
+
             font-size: 13px;
+
             font-weight: bold;
         }
 
@@ -446,52 +495,70 @@ $user_role =
         }
 
 
-        /* Mengatur ukuran dan jarak setiap section. */
+        /* =====================================================
+           GENERAL SECTION
+        ===================================================== */
 
         .section {
             width: 88%;
             max-width: 1250px;
+
             margin: 70px auto;
         }
 
 
         .section-heading {
             display: flex;
+
             justify-content: space-between;
+
             align-items: center;
+
             margin-bottom: 25px;
         }
 
 
         .section-heading h2 {
             font-size: 27px;
+
             font-weight: 900;
         }
 
 
         .section-heading h2::before {
             content: "";
+
             display: inline-block;
+
             width: 5px;
             height: 27px;
+
             background: #e50914;
+
             margin-right: 12px;
+
             vertical-align: middle;
         }
 
 
         .small-red-label {
             color: #e50914;
+
             font-size: 11px;
+
             font-weight: bold;
+
             letter-spacing: 3px;
+
             margin-bottom: 7px;
         }
 
 
         .view-all {
             color: #e50914;
+
             font-size: 13px;
+
             font-weight: bold;
         }
 
@@ -501,99 +568,136 @@ $user_role =
         }
 
 
-        /* Mengatur pilihan tanggal jadwal film. */
+        /* =====================================================
+           DATE
+        ===================================================== */
 
         .date-section {
             margin-top: -30px;
+
             position: relative;
+
             z-index: 5;
         }
 
 
         .date-box {
             background: #111111;
+
             border: 1px solid #282828;
+
             border-radius: 8px;
+
             padding: 24px;
         }
 
 
         .date-title {
             color: #aaaaaa;
+
             font-size: 12px;
+
             font-weight: bold;
+
             letter-spacing: 2px;
+
             margin-bottom: 17px;
         }
 
 
         .date-list {
             display: flex;
+
             gap: 10px;
+
             overflow-x: auto;
         }
 
 
         .date-item {
             min-width: 105px;
+
             text-align: center;
+
             color: #bbbbbb;
+
             background: #191919;
+
             border: 1px solid #292929;
+
             border-radius: 6px;
+
             padding: 13px 10px;
         }
 
 
         .date-item:hover {
             border-color: #e50914;
+
             color: #ffffff;
         }
 
 
         .date-item.active {
             background: #e50914;
+
             border-color: #e50914;
+
             color: #ffffff;
         }
 
 
         .date-day {
             display: block;
+
             font-size: 11px;
+
             margin-bottom: 5px;
         }
 
 
         .date-number {
             display: block;
+
             font-size: 21px;
+
             font-weight: bold;
         }
 
 
         .date-month {
             display: block;
+
             font-size: 10px;
         }
 
 
-        /* Mengatur filter genre film. */
+        /* =====================================================
+           GENRE
+        ===================================================== */
 
         .genre-filter {
             display: flex;
+
             gap: 9px;
+
             flex-wrap: wrap;
+
             margin-bottom: 25px;
         }
 
 
         .genre-btn {
             color: #aaaaaa;
+
             border: 1px solid #333333;
+
             background: #111111;
+
             border-radius: 20px;
+
             padding: 8px 17px;
+
             font-size: 12px;
         }
 
@@ -601,32 +705,45 @@ $user_role =
         .genre-btn:hover,
         .genre-btn.active {
             color: #ffffff;
+
             background: #e50914;
+
             border-color: #e50914;
         }
 
 
-        /* Mengatur kartu film dan poster pada bagian now showing. */
+        /* =====================================================
+           MOVIE GRID
+        ===================================================== */
 
         .movie-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
             gap: 22px;
         }
 
 
         .movie-card {
             background: #111111;
+
             border: 1px solid #242424;
+
             border-radius: 7px;
+
             overflow: hidden;
+
             transition: .3s;
         }
 
 
         .movie-card:hover {
             transform: translateY(-7px);
+
             border-color: #e50914;
+
             box-shadow:
                 0 15px 35px
                 rgba(229,9,20,.12);
@@ -642,21 +759,27 @@ $user_role =
 
         .poster {
             display: block;
+
             object-fit: cover;
         }
 
 
         .no-poster {
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             background:
                 linear-gradient(
                     145deg,
                     #222222,
                     #080808
                 );
+
             color: #555555;
+
             font-weight: bold;
         }
 
@@ -668,76 +791,102 @@ $user_role =
 
         .movie-title {
             font-size: 17px;
+
             font-weight: bold;
+
             margin-bottom: 7px;
+
             white-space: nowrap;
+
             overflow: hidden;
+
             text-overflow: ellipsis;
         }
 
 
         .genre {
             color: #888888;
+
             font-size: 12px;
+
             margin-bottom: 15px;
         }
 
 
         .movie-buttons {
             display: flex;
+
             gap: 7px;
         }
 
 
         .movie-buttons a {
             flex: 1;
+
             text-align: center;
+
             padding: 9px 5px;
+
             border-radius: 4px;
+
             font-size: 10px;
+
             font-weight: bold;
         }
 
 
         .synopsis-btn {
             color: #ffffff;
+
             border: 1px solid #444444;
         }
 
 
         .synopsis-btn:hover {
             border-color: #aaaaaa;
+
             color: #ffffff;
         }
 
 
         .ticket-btn {
             background: #e50914;
+
             color: #ffffff;
         }
 
 
         .ticket-btn:hover {
             background: #b20710;
+
             color: #ffffff;
         }
 
 
-        /* Mengatur daftar jadwal film berdasarkan tanggal. */
+        /* =====================================================
+           SCHEDULE
+        ===================================================== */
 
         .schedule-container {
             background: #101010;
+
             border: 1px solid #252525;
+
             border-radius: 8px;
+
             overflow: hidden;
         }
 
 
         .schedule-card {
             display: flex;
+
             align-items: center;
+
             gap: 22px;
+
             padding: 20px 24px;
+
             border-bottom: 1px solid #252525;
         }
 
@@ -749,10 +898,15 @@ $user_role =
 
         .schedule-poster {
             width: 65px;
+
             height: 88px;
+
             object-fit: cover;
+
             border-radius: 4px;
+
             background: #222222;
+
             flex-shrink: 0;
         }
 
@@ -764,77 +918,105 @@ $user_role =
 
         .schedule-title {
             font-size: 17px;
+
             font-weight: bold;
+
             margin-bottom: 6px;
         }
 
 
         .schedule-studio {
             color: #888888;
+
             font-size: 12px;
         }
 
 
         .schedule-times {
             display: flex;
+
             gap: 8px;
+
             align-items: center;
         }
 
 
         .time-box {
             background: #191919;
+
             border: 1px solid #3a3a3a;
+
             border-radius: 4px;
+
             padding: 9px 13px;
+
             text-align: center;
+
             min-width: 95px;
         }
 
 
         .time {
             display: block;
+
             font-weight: bold;
+
             font-size: 13px;
         }
 
 
         .price {
             display: block;
+
             color: #e50914;
+
             font-size: 10px;
+
             margin-top: 3px;
         }
 
 
         .empty-state {
             padding: 45px;
+
             text-align: center;
+
             color: #777777;
         }
 
 
-        /* Mengatur kartu upcoming showtimes. */
+        /* =====================================================
+           UPCOMING SHOWTIMES
+        ===================================================== */
 
         .upcoming-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
             gap: 20px;
         }
 
 
         .upcoming-card {
             background: #101010;
+
             border: 1px solid #292929;
+
             border-radius: 10px;
+
             overflow: hidden;
+
             transition: .3s;
         }
 
 
         .upcoming-card:hover {
             transform: translateY(-7px);
+
             border-color: #e50914;
+
             box-shadow:
                 0 15px 35px
                 rgba(229,9,20,.14);
@@ -843,28 +1025,41 @@ $user_role =
 
         .upcoming-poster {
             height: 280px;
+
             position: relative;
+
             overflow: hidden;
+
             background: #181818;
         }
 
 
         .upcoming-poster img {
             width: 100%;
+
             height: 100%;
+
             object-fit: cover;
         }
 
 
         .upcoming-no-poster {
             width: 100%;
+
             height: 100%;
+
             display: flex;
+
             align-items: center;
+
             justify-content: center;
+
             text-align: center;
+
             color: #555555;
+
             font-weight: 900;
+
             background:
                 linear-gradient(
                     145deg,
@@ -876,13 +1071,20 @@ $user_role =
 
         .date-badge {
             position: absolute;
+
             top: 14px;
             left: 14px;
+
             background: #e50914;
+
             color: white;
+
             padding: 8px 12px;
+
             border-radius: 5px;
+
             font-size: 11px;
+
             font-weight: 800;
         }
 
@@ -894,89 +1096,119 @@ $user_role =
 
         .upcoming-content h3 {
             font-size: 18px;
+
             font-weight: 800;
+
             margin-bottom: 5px;
         }
 
 
         .upcoming-studio {
             color: #777777;
+
             font-size: 12px;
+
             margin-bottom: 17px;
         }
 
 
         .upcoming-bottom {
             display: flex;
+
             justify-content: space-between;
+
             align-items: center;
         }
 
 
         .upcoming-time {
             display: block;
+
             font-size: 18px;
+
             font-weight: 800;
         }
 
 
         .upcoming-price {
             display: block;
+
             color: #e50914;
+
             font-size: 11px;
+
             margin-top: 3px;
         }
 
 
         .small-buy {
             background: #e50914;
+
             color: white;
+
             padding: 9px 17px;
+
             border-radius: 4px;
+
             font-size: 11px;
+
             font-weight: 800;
         }
 
 
         .small-buy:hover {
             background: #b20710;
+
             color: white;
         }
 
 
-        /* Mengatur kartu film yang akan datang. */
+        /* =====================================================
+           COMING SOON
+        ===================================================== */
 
         .coming-movie-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
             gap: 20px;
         }
 
 
         .coming-movie {
             background: #111111;
+
             border: 1px solid #292929;
+
             border-radius: 9px;
+
             overflow: hidden;
+
             transition: .3s;
         }
 
 
         .coming-movie:hover {
             transform: translateY(-6px);
+
             border-color: #e50914;
         }
 
 
         .coming-poster {
             height: 320px;
+
             background: #181818;
         }
 
 
         .coming-poster img {
             width: 100%;
+
             height: 100%;
+
             object-fit: cover;
         }
 
@@ -988,27 +1220,34 @@ $user_role =
 
         .coming-date {
             color: #e50914;
+
             font-size: 11px;
+
             font-weight: 800;
         }
 
 
         .coming-info h3 {
             font-size: 17px;
+
             margin: 8px 0 6px;
         }
 
 
         .coming-info p {
             color: #777777;
+
             font-size: 12px;
+
             margin-bottom: 15px;
         }
 
 
         .coming-link {
             color: white;
+
             font-size: 11px;
+
             font-weight: 800;
         }
 
@@ -1018,7 +1257,9 @@ $user_role =
         }
 
 
-        /* Mengatur informasi cinema HIMTI MOVIE di Surabaya. */
+        /* =====================================================
+           CINEMA
+        ===================================================== */
 
         .cinema-box {
             background:
@@ -1027,55 +1268,75 @@ $user_role =
                     #1a0000,
                     #0d0d0d 65%
                 );
+
             border: 1px solid #391010;
+
             border-radius: 10px;
+
             padding: 40px;
         }
 
 
         .cinema-label {
             color: #e50914;
+
             font-size: 11px;
+
             font-weight: 800;
+
             letter-spacing: 3px;
+
             margin-bottom: 10px;
         }
 
 
         .cinema-box h3 {
             font-size: 32px;
+
             font-weight: 900;
+
             margin-bottom: 10px;
         }
 
 
         .cinema-box p {
             color: #999999;
+
             line-height: 1.7;
+
             margin: 0;
+
             max-width: 600px;
         }
 
 
-        /* Mengatur tampilan footer website. */
+        /* =====================================================
+           FOOTER
+        ===================================================== */
 
         footer {
             background: #050505;
+
             border-top: 1px solid #222222;
+
             padding: 45px 6%;
+
             margin-top: 80px;
         }
 
 
         .footer-content {
             display: flex;
+
             justify-content: space-between;
+
             gap: 30px;
         }
 
 
         .footer-logo {
             font-size: 25px;
+
             font-weight: 900;
         }
 
@@ -1087,20 +1348,27 @@ $user_role =
 
         .footer-text {
             color: #777777;
+
             font-size: 12px;
+
             margin-top: 9px;
         }
 
 
         .footer-right {
             color: #777777;
+
             font-size: 12px;
+
             line-height: 1.8;
+
             text-align: right;
         }
 
 
-        /* Menyesuaikan tampilan website untuk perangkat yang lebih kecil. */
+        /* =====================================================
+           RESPONSIVE
+        ===================================================== */
 
         @media (max-width: 950px) {
 
@@ -1111,7 +1379,9 @@ $user_role =
 
             .search-box {
                 order: 5;
+
                 flex-basis: 100%;
+
                 max-width: 100%;
             }
 
@@ -1164,12 +1434,14 @@ $user_role =
 
             .schedule-card {
                 align-items: flex-start;
+
                 flex-wrap: wrap;
             }
 
 
             .schedule-times {
                 width: 100%;
+
                 justify-content: flex-start;
             }
 
@@ -1193,7 +1465,9 @@ $user_role =
 <body>
 
 
-<!-- Header menampilkan logo, lokasi, pencarian, dan akun pengguna. -->
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
 <header class="top-bar">
 
@@ -1249,33 +1523,12 @@ $user_role =
                 </span>
 
 
-                <?php if ($user_role === 'admin'): ?>
-
-                    <a
-                        href="admin/index.php"
-                    >
-                        ADMIN
-                    </a>
-
-                <?php endif; ?>
-
-
                 <a
                     href="history.php"
                     class="login-btn"
                 >
 
                     MY ACCOUNT
-
-                </a>
-
-
-                <a
-                    href="logout.php"
-                    class="login-btn"
-                >
-
-                    LOG OUT
 
                 </a>
 
@@ -1310,7 +1563,9 @@ $user_role =
 </header>
 
 
-<!-- Menu menyediakan navigasi menuju bagian cinema, movies, dan showtimes. -->
+<!-- =====================================================
+     MENU
+===================================================== -->
 
 <nav class="menu-bar">
 
@@ -1320,7 +1575,9 @@ $user_role =
         <li>
 
             <a href="#cinemas">
+
                 CINEMAS
+
             </a>
 
         </li>
@@ -1329,7 +1586,9 @@ $user_role =
         <li>
 
             <a href="#movies">
+
                 MOVIES
+
             </a>
 
         </li>
@@ -1338,7 +1597,9 @@ $user_role =
         <li>
 
             <a href="#schedule">
+
                 SHOWTIMES
+
             </a>
 
         </li>
@@ -1349,7 +1610,9 @@ $user_role =
 </nav>
 
 
-<!-- Hero menampilkan identitas HIMTI MOVIE dengan tema cinema. -->
+<!-- =====================================================
+     HERO
+===================================================== -->
 
 <section class="hero">
 
@@ -1425,7 +1688,9 @@ $user_role =
 </section>
 
 
-<!-- Date selector menyediakan pilihan tanggal jadwal film. -->
+<!-- =====================================================
+     SELECT DATE
+===================================================== -->
 
 <section class="section date-section">
 
@@ -1481,7 +1746,7 @@ $user_role =
 
 
                 <a
-                    href="?date=<?= $date ?>#schedule"
+                    href="?date=<?= $date ?>"
                     class="date-item <?= $active ?>"
                 >
 
@@ -1520,7 +1785,9 @@ $user_role =
 </section>
 
 
-<!-- Now showing menampilkan film yang tersedia di database. -->
+<!-- =====================================================
+     NOW SHOWING
+===================================================== -->
 
 <section
     class="section"
@@ -1551,7 +1818,7 @@ $user_role =
     </div>
 
 
-    <!-- Filter genre digunakan untuk menyaring film berdasarkan genre. -->
+    <!-- GENRE -->
 
     <div class="genre-filter">
 
@@ -1591,7 +1858,7 @@ $user_role =
     </div>
 
 
-    <!-- Movie grid menampilkan poster, genre, synopsis, dan pembelian tiket. -->
+    <!-- MOVIES -->
 
     <div
         class="movie-grid"
@@ -1636,11 +1903,13 @@ $user_role =
                     $movie['poster']
                     ?? '';
 
+
                 $isUrl =
                     filter_var(
                         $poster,
                         FILTER_VALIDATE_URL
                     );
+
 
                 $isLocal =
                     !$isUrl &&
@@ -1777,7 +2046,9 @@ $user_role =
 </section>
 
 
-<!-- Movie schedule menampilkan jam tayang berdasarkan tanggal pilihan. -->
+<!-- =====================================================
+     MOVIE SCHEDULE
+===================================================== -->
 
 <section
     class="section"
@@ -1828,11 +2099,13 @@ $user_role =
                     $schedule['poster']
                     ?? '';
 
+
                 $isUrl =
                     filter_var(
                         $poster,
                         FILTER_VALIDATE_URL
                     );
+
 
                 $isLocal =
                     !$isUrl &&
@@ -1946,7 +2219,7 @@ $user_role =
 
 
                         <a
-                            href="checkout.php?showtime_id=<?= $schedule['showtime_id'] ?>"
+                            href="movie_detail.php?id=<?= $schedule['movie_id'] ?>"
                             class="btn-red"
                             style="
                                 padding:9px 14px;
@@ -1986,7 +2259,9 @@ $user_role =
 </section>
 
 
-<!-- Upcoming showtimes menampilkan jadwal terdekat dari hari ini. -->
+<!-- =====================================================
+     UPCOMING SHOWTIMES
+===================================================== -->
 
 <section
     class="section"
@@ -2048,11 +2323,13 @@ $user_role =
                     $show['poster']
                     ?? '';
 
+
                 $isUrl =
                     filter_var(
                         $poster,
                         FILTER_VALIDATE_URL
                     );
+
 
                 $isLocal =
                     !$isUrl &&
@@ -2167,7 +2444,7 @@ $user_role =
 
 
                             <a
-                                href="checkout.php?showtime_id=<?= $show['showtime_id'] ?>"
+                                href="movie_detail.php?id=<?= $show['movie_id'] ?>"
                                 class="small-buy"
                             >
 
@@ -2207,7 +2484,9 @@ $user_role =
 </section>
 
 
-<!-- Coming soon menampilkan film yang belum dirilis. -->
+<!-- =====================================================
+     COMING SOON
+===================================================== -->
 
 <section class="section">
 
@@ -2256,11 +2535,13 @@ $user_role =
                     $movie['poster']
                     ?? '';
 
+
                 $isUrl =
                     filter_var(
                         $poster,
                         FILTER_VALIDATE_URL
                     );
+
 
                 $isLocal =
                     !$isUrl &&
@@ -2393,7 +2674,9 @@ $user_role =
 </section>
 
 
-<!-- Cinema section menampilkan identitas HIMTI MOVIE di Surabaya. -->
+<!-- =====================================================
+     CINEMA
+===================================================== -->
 
 <section
     class="section"
@@ -2446,7 +2729,9 @@ $user_role =
 </section>
 
 
-<!-- Footer menampilkan informasi penutup website. -->
+<!-- =====================================================
+     FOOTER
+===================================================== -->
 
 <footer>
 
@@ -2490,7 +2775,9 @@ $user_role =
 </footer>
 
 
-<!-- Search digunakan untuk menyaring film berdasarkan judul. -->
+<!-- =====================================================
+     SEARCH
+===================================================== -->
 
 <script>
 
@@ -2506,6 +2793,7 @@ if (searchInput) {
 
             const keyword =
                 this.value.toLowerCase();
+
 
             const cards =
                 document.querySelectorAll(
