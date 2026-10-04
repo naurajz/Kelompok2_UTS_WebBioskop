@@ -8,4 +8,5 @@
  * Deadline : 1 Oktober 2026
  */
 
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
+// Gunakan pengaman bersama agar aturan autentikasi admin tidak diduplikasi.
+require_once __DIR__ . '/../includes/admin_guard.php';
