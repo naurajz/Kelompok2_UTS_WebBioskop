@@ -166,7 +166,7 @@ unset($_SESSION['error']); // Hapus error setelah ditampilkan
 <body>
 
     <div class="login-container">
-        <div class="brand">HIMTIX <span></div>
+        <div class="brand">HIMTI <span> MOVIE<span></div>
         <h2>Login Akun</h2>
 
         <?php if ($error): ?>
