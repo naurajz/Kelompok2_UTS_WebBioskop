@@ -31,31 +31,53 @@ unset($_SESSION['error']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar - Bioskop</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            font-family: Arial, Helvetica, sans-serif;
+            background:
+                radial-gradient(circle at top, rgba(229, 9, 20, 0.18), transparent 55%),
+                #080808;
+            color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            padding: 2rem 1rem;
         }
 
         .register-container {
-            background: #fff;
+            background: #121212;
             padding: 2.5rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            border: 1px solid #252525;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
             width: 100%;
             max-width: 400px;
-            box-sizing: border-box;
-            margin: 2rem 0;
+        }
+
+        .brand {
+            text-align: center;
+            font-size: 25px;
+            font-weight: 900;
+            margin-bottom: .4rem;
+        }
+
+        .brand span {
+            color: #e50914;
         }
 
         h2 {
             text-align: center;
-            margin-bottom: 1.5rem;
-            color: #333;
+            margin: 0 0 1.5rem;
+            color: #ddd;
+            font-size: 1.1rem;
+            font-weight: normal;
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
         .form-group {
@@ -65,8 +87,9 @@ unset($_SESSION['error']);
         label {
             display: block;
             margin-bottom: .5rem;
-            color: #555;
+            color: #bbb;
             font-weight: bold;
+            font-size: 0.9rem;
         }
 
         input[type="text"],
@@ -75,55 +98,62 @@ unset($_SESSION['error']);
         select {
             width: 100%;
             padding: .75rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
+            background: #181818;
+            color: #fff;
+            border: 1px solid #333;
+            border-radius: 7px;
             font-size: 1rem;
         }
 
-        input:focus, select:focus {
-            border-color: #007bff;
+        input::placeholder {
+            color: #777;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #e50914;
             outline: none;
-            box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+            box-shadow: 0 0 5px rgba(229, 9, 20, 0.45);
         }
 
         button {
             width: 100%;
             padding: .8rem;
-            background: #28a745;
-            color: white;
+            background: #e50914;
+            color: #fff;
             border: none;
-            border-radius: 6px;
+            border-radius: 7px;
             cursor: pointer;
             font-size: 1rem;
             font-weight: bold;
             transition: background 0.3s;
-            margin-top: 0.5rem;
         }
 
         button:hover {
-            background: #218838;
+            background: #b80710;
         }
 
         .error {
-            color: #dc3545;
-            background: #f8d7da;
+            color: #ff8a8f;
+            background: rgba(229, 9, 20, 0.12);
             padding: .75rem;
-            border-radius: 6px;
+            border-radius: 7px;
             text-align: center;
             margin-bottom: 1.2rem;
-            border: 1px solid #f5c6cb;
+            border: 1px solid rgba(229, 9, 20, 0.5);
         }
 
         .login-link {
             text-align: center;
             margin-top: 1.5rem;
             font-size: 0.9rem;
+            color: #bbb;
         }
 
         .login-link a {
-            color: #007bff;
+            color: #e50914;
             text-decoration: none;
+            font-weight: bold;
         }
 
         .login-link a:hover {
@@ -134,6 +164,7 @@ unset($_SESSION['error']);
 <body>
 
     <div class="register-container">
+        <div class="brand">HIMTI <span>MOVIE</span></div>
         <h2>Daftar Akun</h2>
 
         <?php if ($error): ?>
