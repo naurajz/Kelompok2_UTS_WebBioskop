@@ -1,12 +1,4 @@
 <?php
-/**
- * File  : classes/Studio.php
- * Tugas : Class Studio extends BaseModel. CRUD tabel studios
- *         (studio_id, studio_name, capacity) + validasi input.
- *
- * getAll(), getById() dan delete() diwarisi dari BaseModel.
- */
-
 require_once __DIR__ . '/BaseModel.php';
 
 class Studio extends BaseModel
