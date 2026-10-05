@@ -5,7 +5,11 @@ class DBConnection
     private string $port = "5432";
     private string $dbname = "bioskop";
     private string $username = "postgres";
+<<<<<<< HEAD
     private string $password = "12345678"; // Ganti dengan password database Anda    
+=======
+    private string $password = "1111"; // Ganti dengan password database Anda    
+>>>>>>> aaeab2dd314d11d8e4e9be54a689649ed4bae049
     private $dbconn = null;
 
     public function __construct()
