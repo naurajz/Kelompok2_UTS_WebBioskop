@@ -1,10 +1,4 @@
 <?php
-/**
- * User-03 Riwayat Pesanan  (taruh sebagai history.php di root, ganti isi kerangka yang ada)
- *
- * SESUAIKAN 2 hal jika beda dengan kode tim:
-  *  key session login -> lihat login_post.php (di sini: $_SESSION['user_id'])
- */
 require_once __DIR__ . '/bootstrap.php';   // sudah berisi session & class DBConnection
 require_once __DIR__ . '/core/Validator.php';
 

@@ -1,27 +1,5 @@
 <?php
-/**
- * File     : classes/Genre.php
- * Card     : Genre-01 Genre Backend
- * Tugas    : Class Genre extends BaseModel. Isi: constructor, getter/setter, save().
- * PIC      : (isi nama)
- * Deadline : 2 Oktober 2026
- */
-
-// TODO: tulis kode di sini. Beri comment penjelasan di tiap bagian penting.
 require_once __DIR__ . '/BaseModel.php';
- 
-/**
- * Class Genre mewakili tabel `genres` (genre_id, genre_name).
- * Operasi CRUD dasar (getAll, getById, create, update, delete) diwarisi dari BaseModel,
- * jadi di sini hanya ditambahkan validasi, getter/setter, dan save().
- *
- * Contoh pemakaian (sesuai kartu tugas):
- *   $genre = new Genre('Horor');
- *   $genre->save(); // INSERT genre baru
- *
- *   $genre = new Genre('Aksi', 3); // genre_id diisi -> save() menjadi UPDATE
- *   $genre->save();
- */
 class Genre extends BaseModel
 {
     // Panjang maksimal sesuai kolom genre_name VARCHAR(30) di database

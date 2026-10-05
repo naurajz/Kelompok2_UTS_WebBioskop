@@ -1,6 +1,4 @@
 <?php
-// confirm.php - halaman konfirmasi setelah checkout berhasil
-// dibuat oleh Davientyo Arifius Putra (434251115)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

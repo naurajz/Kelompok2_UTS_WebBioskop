@@ -1,8 +1,4 @@
 <?php
-/**
- * Admin-01 Laporan Transaksi (taruh di folder admin/)
- * SESUAIKAN koneksi ($conn) dan key session role jika beda dengan kode tim.
- */
 require_once __DIR__ . '/../bootstrap.php';   // sudah berisi session & class DBConnection
 require_once __DIR__ . '/../core/Validator.php';
 

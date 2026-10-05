@@ -1,7 +1,4 @@
 <?php
-// checkout.php - halaman beli tiket
-// dibuat oleh Davientyo Arifius Putra (434251115)
-
 // mulai session biar bisa akses data login user
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

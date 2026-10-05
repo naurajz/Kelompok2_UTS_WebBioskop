@@ -5,7 +5,7 @@ class DBConnection
     private string $port = "5432";
     private string $dbname = "bioskop";
     private string $username = "postgres";
-    private string $password = "pw"; // Ganti dengan password database Anda
+    private string $password = "1111"; // Ganti dengan password database Anda
     private $dbconn = null;
 
     public function __construct()

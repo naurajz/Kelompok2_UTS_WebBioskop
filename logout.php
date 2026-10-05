@@ -1,12 +1,4 @@
 <?php
-/**
- * File     : logout.php
- * Card     : Auth-02 Logout & Proteksi Halaman
- * Tugas    : session_destroy() lalu redirect ke login.php. Tanpa tampilan.
- * PIC      : Syahrisham Rafif Thufail
- * Deadline : 1 Oktober 2026
- */
-
 // Inisialisasi session lewat bootstrap
 require_once "bootstrap.php";
 

@@ -1,19 +1,12 @@
 <?php
+require_once __DIR__ . '/BaseModel.php';
+
 class Ticket extends BaseModel
 {
-    // Property sesuai kolom tabel 'tickets' di database/bioskop.sql
     private $ticket_id;
     private $order_id;
     private $seat_number;
 
-    /**
-     * Constructor Ticket
-     * Memanggil constructor BaseModel dengan nama tabel 'tickets' dan primary key 'ticket_id'
-     *
-     * @param mixed       $arg1 ID pesanan (int) atau objek koneksi database
-     * @param string|null $arg2 Nomor kursi (contoh: 'A1')
-     * @param int|null    $arg3 Primary key tiket jika update
-     */
     public function __construct($arg1 = null, $arg2 = null, $arg3 = null)
     {
         parent::__construct('tickets', 'ticket_id');
@@ -29,11 +22,7 @@ class Ticket extends BaseModel
             $this->ticket_id = $arg3;
         }
     }
-
-    // ==========================================
-    // GETTER & SETTER (Encapsulation)
-    // ==========================================
-
+ 
     public function getTicketId()
     {
         return $this->ticket_id;
@@ -67,18 +56,6 @@ class Ticket extends BaseModel
         return $this;
     }
 
-    // ==========================================
-    // STATIC METHOD (Ticket-03: Generator Kode Booking)
-    // ==========================================
-
-    /**
-     * Generate kode booking pesanan (Ticket-03)
-     * Format resmi berbasis order_id: BK + 5 digit angka (contoh: BK00001)
-     * Juga mendukung prefix string jika dipanggil tanpa order_id spesifik.
-     *
-     * @param int|string|null $param
-     * @return string
-     */
     public static function generateBookingCode($param = null): string
     {
         if (is_numeric($param) && (int)$param > 0) {
@@ -89,27 +66,11 @@ class Ticket extends BaseModel
         return $prefix . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 5));
     }
 
-    // ==========================================
-    // MAGIC METHOD
-    // ==========================================
-
-    /**
-     * Magic method __toString() dieksekusi ketika objek diperlakukan sebagai string
-     */
     public function __toString(): string
     {
         return "Ticket #{$this->ticket_id} (Order: {$this->order_id}, Kursi: {$this->seat_number})";
     }
 
-    // ==========================================
-    // OPERASI BASIS DATA (CRUD & Kueri)
-    // ==========================================
-
-    /**
-     * Menyimpan data tiket ke database
-     *
-     * @return bool
-     */
     public function save(): bool
     {
         if ($this->ticket_id) {
@@ -125,12 +86,6 @@ class Ticket extends BaseModel
         }
     }
 
-    /**
-     * Mengambil seluruh baris tiket yang berelasi dengan order_id tertentu
-     *
-     * @param int $orderId
-     * @return array
-     */
     public function getByOrderId($orderId): array
     {
         $query = "SELECT * FROM " . $this->table . " WHERE order_id = $1 ORDER BY ticket_id ASC";
@@ -145,18 +100,6 @@ class Ticket extends BaseModel
         return [];
     }
 
-    /**
-     * Menyimpan daftar tiket sekaligus untuk pesanan yang baru dibuat (Ticket-01)
-     * Kompatibel dengan pemanggilan dari Order.php:
-     * - createTicketsForOrder($orderId, $quantity, $seatNumbers)
-     * - createTicketsForOrder($orderId, $bookingCode, $quantity, $seatNumbers)
-     *
-     * @param int   $orderId
-     * @param mixed $param2
-     * @param mixed $param3
-     * @param array $param4
-     * @return array
-     */
     public function createTicketsForOrder($orderId, $param2 = 1, $param3 = [], $param4 = []): array
     {
         if (is_numeric($param2)) {
@@ -193,14 +136,6 @@ class Ticket extends BaseModel
         return $created;
     }
 
-    /**
-     * Mengambil detail lengkap tiket dan pesanan untuk ditampilkan di halaman ticket.php
-     * Menggabungkan data dari tabel orders, showtimes, movies, genres, studios, dan users.
-     * Logika query ditempatkan di Model agar View tetap bersih (Prinsip MVC).
-     *
-     * @param int $orderId
-     * @return array|null
-     */
     public function getOrderTicketDetails($orderId): ?array
     {
         if (method_exists($this->db, 'send_query')) {

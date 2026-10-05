@@ -1,7 +1,4 @@
 <?php
-// ticket.php - halaman e-tiket setelah pemesanan selesai
-// dibuat oleh Shafrie Alvito Wimala Rasendrya (434251142)
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

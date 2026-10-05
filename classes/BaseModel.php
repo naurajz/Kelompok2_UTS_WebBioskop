@@ -1,17 +1,4 @@
 <?php
-/**
-
- * File     : BaseModel.php
-
- * Tugas    : Membuat kelas abstrak BaseModel yang mengimplementasikan interface Crudable untuk operasi CRUD pada database PostgreSQL.   
-
- * PIC      : Rafalen Labibsani farisqha (434251132)
-
- * Deadline : 1 Oktober 2026
-
- */
-
-
 require_once __DIR__ . '/../config/database.php';
 require_once 'Crudable.php';
 

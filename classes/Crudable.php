@@ -1,16 +1,4 @@
 <?php
-/**
-
- * File     : Crudable.php
-
- * Tugas    : Membuat interface Crudable untuk operasi CRUD pada database PostgreSQL.
-
- * PIC      : Rafalen Labibsani farisqha (434251132)
-
- * Deadline : 1 Oktober 2026
-
- */
-
 interface Crudable {
     // 1. Read: Mengambil seluruh data
     public function getAll(): array;
