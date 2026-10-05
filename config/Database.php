@@ -3,13 +3,9 @@ class DBConnection
 {
     private string $host = "localhost";
     private string $port = "5432";
-<<<<<<< HEAD
     private string $dbname = "bioskop";
-=======
-    private string $dbname = "isi db name"; // Ganti dengan nama database Anda
->>>>>>> 05054fe387775b1a1716b2e4719ecc8159b339d8
     private string $username = "postgres";
-    private string $password = "1111"; // Ganti dengan password database Anda
+    private string $password = "pw"; // Ganti dengan password database Anda
     private $dbconn = null;
 
     public function __construct()
