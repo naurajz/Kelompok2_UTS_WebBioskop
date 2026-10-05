@@ -9,24 +9,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $isLoggedIn = isset($_SESSION['user_id']);
 $isAdmin = $isLoggedIn && ($_SESSION['role'] ?? '') === 'admin';
 
-<<<<<<< HEAD
-$dbHost = getenv("DB_HOST") ?: "localhost";
-$dbPort = getenv("DB_PORT") ?: "5432";
-$dbName = getenv("DB_NAME") ?: "bioskop";
-$dbUser = getenv("DB_USER") ?: "postgres";
-$dbPassword = getenv("DB_PASSWORD") ?: "12345678"; // Ganti dengan password database Anda  
-
-$conn = pg_connect(
-    "host=$dbHost port=$dbPort dbname=$dbName user=$dbUser password=$dbPassword"
-);
-
-if (!$conn) {
-    die("Database connection failed.");
-}
-=======
 $db   = new DBConnection();                       // membuat objek dari class itu
 $conn = $db->getConnection();                     // mengambil koneksinya
->>>>>>> aaeab2dd314d11d8e4e9be54a689649ed4bae049
 
 // Menentukan poster film dan gambar cadangan yang digunakan pada halaman.
 // Poster TMDB hanya dipakai kalau film tidak punya poster hasil upload admin.
