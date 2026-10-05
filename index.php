@@ -1,5 +1,7 @@
 <?php
+require_once __DIR__ . '/config/database.php';   // memuat class DBConnection
 
+// Memulai session dan menentukan apakah pengguna sudah login dan apakah dia admin.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -7,19 +9,8 @@ if (session_status() === PHP_SESSION_NONE) {
 $isLoggedIn = isset($_SESSION['user_id']);
 $isAdmin = $isLoggedIn && ($_SESSION['role'] ?? '') === 'admin';
 
-$dbHost = getenv("DB_HOST") ?: "localhost";
-$dbPort = getenv("DB_PORT") ?: "5432";
-$dbName = getenv("DB_NAME") ?: "bioskop";
-$dbUser = getenv("DB_USER") ?: "postgres";
-$dbPassword = getenv("DB_PASSWORD") ?: "masukkan password db Anda di sini"; // Ganti dengan password database Anda  
-
-$conn = pg_connect(
-    "host=$dbHost port=$dbPort dbname=$dbName user=$dbUser password=$dbPassword"
-);
-
-if (!$conn) {
-    die("Database connection failed.");
-}
+$db   = new DBConnection();                       // membuat objek dari class itu
+$conn = $db->getConnection();                     // mengambil koneksinya
 
 // Menentukan poster film dan gambar cadangan yang digunakan pada halaman.
 // Poster TMDB hanya dipakai kalau film tidak punya poster hasil upload admin.
