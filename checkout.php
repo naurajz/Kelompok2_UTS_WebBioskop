@@ -26,6 +26,11 @@ if ($showtimeId <= 0) {
     exit;
 }
 
+// muat dependensi dulu, urutannya penting:
+// BaseModel (dan Crudable) harus ada sebelum Order, karena Order extends BaseModel
+require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/classes/BaseModel.php';
+require_once __DIR__ . '/classes/Ticket.php';
 require_once __DIR__ . '/classes/Order.php';
 
 // data user yang lagi login (dari session)
@@ -33,8 +38,6 @@ $currentUserId    = (int)$_SESSION['user_id'];
 
 // session cuma menyimpan user_id dan role (lihat login_post.php),
 // jadi nama dan email diambil langsung dari tabel users
-require_once __DIR__ . '/bootstrap.php';
-
 $currentUserName  = 'Pengguna';
 $currentUserEmail = '';
 

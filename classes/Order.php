@@ -1,24 +1,8 @@
 <?php
-/**
- * File     : classes/Order.php
- * Card     : Trx-01 Order & CO Backend
- * Tugas    : Class Order extends BaseModel. Isi: cek sisa kuota, hitung total,
- *            simpan order + tiket dalam satu transaksi database.
- * PIC      : Davientyo Arifius Putra
- * NIM      : 434251115
- * Deadline : 3 Oktober 2026
- */
-
-// Panggil file class induk dan class Ticket untuk pembuatan tiket
+// Muat dependensi sendiri supaya halaman mana pun yang memakai Order tidak error
 require_once __DIR__ . '/BaseModel.php';
 require_once __DIR__ . '/Ticket.php';
 
-/**
- * Class Order
- * Mengelola transaksi pesanan tiket, pengecekan sisa kuota studio,
- * kalkulasi total harga, dan penyimpanan atomik antara tabel orders dan tickets.
- * Menggunakan koneksi DBConnection PostgreSQL via BaseModel.
- */
 class Order extends BaseModel {
 
     // Properti sesuai kolom tabel orders di database/bioskop.sql
@@ -248,8 +232,16 @@ class Order extends BaseModel {
             $bookingCode = Ticket::generateBookingCode($orderId);
 
             // B. Simpan lembar tiket ke tabel 'tickets' (Ticket-01)
-            $ticketModel = new Ticket();
+            // PENTING: kirim $this->db supaya Ticket memakai koneksi yang SAMA dengan
+            // transaksi ini. Kalau tidak, Ticket membuka koneksi baru (FORCE_NEW) yang
+            // tidak bisa melihat order yang belum di-commit, dan insert tiket gagal (FK).
+            $ticketModel = new Ticket($this->db);
             $createdTickets = $ticketModel->createTicketsForOrder($orderId, $quantity, $seatNumbers);
+
+            // Pastikan semua tiket benar-benar tersimpan, kalau tidak batalkan seluruh transaksi
+            if (count($createdTickets) !== (int)$quantity) {
+                throw new Exception("Tiket gagal disimpan ke database.");
+            }
 
             // C. Jika semua berhasil, lakukan COMMIT
             $this->db->commit();
