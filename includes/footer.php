@@ -11,7 +11,7 @@
 
 <footer class="bg-dark text-light py-4 mt-5 border-top border-secondary">
     <div class="container text-center">
-        <p class="mb-1">&copy; <?= date('Y'); ?> Cinema Bioskop - Kelompok 2 PPL. All Rights Reserved.</p>
+        <p class="mb-1">&copy; <?= date('Y'); ?>HIMTI MOVIES - Kelompok 2 PPL. All Rights Reserved.</p>
         <small class="text-secondary">Aplikasi Pemesanan Tiket Bioskop Online</small>
     </div>
 </footer>
