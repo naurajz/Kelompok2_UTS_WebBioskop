@@ -1,13 +1,4 @@
 <?php
-/**
- * File     : admin/studio.php
- * Card     : [Kode card]
- * Tugas    : Halaman admin untuk kelola studio: tambah, ubah, hapus (nama dan kapasitas).
- * PIC      : [Nama PIC]
- * NIM      : [NIM]
- * Deadline : [Tanggal deadline]
- */
-
 require_once __DIR__ . '/../includes/admin_guard.php';
 
 $studio = new Studio();
