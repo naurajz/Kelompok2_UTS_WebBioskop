@@ -6,7 +6,7 @@ $message = null;
 $isSuccess = false;
 $old = ['movie_id' => '', 'studio_id' => '', 'show_date' => '', 'show_time' => '', 'price' => ''];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') { //
     if (($_POST['action'] ?? '') === 'delete') {
         $isSuccess = $showtime->delete((int)($_POST['showtime_id'] ?? 0));
         $message = $isSuccess ? 'Jadwal berhasil dihapus.' : 'Gagal menghapus jadwal.';
@@ -51,8 +51,7 @@ require_once __DIR__ . '/../includes/header.php';
                     onclick="this.parentElement.remove()">&times;</button>
             </div>
         <?php endif; ?>
-
-        <!-- ===== FORM TAMBAH JADWAL ===== -->
+       
         <div class="panel">
             <h2>Tambah <span>Jadwal</span></h2>
 
