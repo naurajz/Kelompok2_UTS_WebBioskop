@@ -232,9 +232,12 @@ class Order extends BaseModel {
             $bookingCode = Ticket::generateBookingCode($orderId);
 
             // B. Simpan lembar tiket ke tabel 'tickets' (Ticket-01)
+<<<<<<< HEAD
             // PENTING: kirim $this->db supaya Ticket memakai koneksi yang SAMA dengan
             // transaksi ini. Kalau tidak, Ticket membuka koneksi baru (FORCE_NEW) yang
             // tidak bisa melihat order yang belum di-commit, dan insert tiket gagal (FK).
+=======
+>>>>>>> 3cf05609b34152010c68e25ef0da3ee168fadbeb
             $ticketModel = new Ticket($this->db);
             $createdTickets = $ticketModel->createTicketsForOrder($orderId, $quantity, $seatNumbers);
 
