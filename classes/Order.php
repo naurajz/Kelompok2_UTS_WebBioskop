@@ -248,7 +248,7 @@ class Order extends BaseModel {
             $bookingCode = Ticket::generateBookingCode($orderId);
 
             // B. Simpan lembar tiket ke tabel 'tickets' (Ticket-01)
-            $ticketModel = new Ticket();
+            $ticketModel = new Ticket($this->db);
             $createdTickets = $ticketModel->createTicketsForOrder($orderId, $quantity, $seatNumbers);
 
             // C. Jika semua berhasil, lakukan COMMIT
