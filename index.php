@@ -11,7 +11,7 @@ $dbHost = getenv("DB_HOST") ?: "localhost";
 $dbPort = getenv("DB_PORT") ?: "5432";
 $dbName = getenv("DB_NAME") ?: "bioskop";
 $dbUser = getenv("DB_USER") ?: "postgres";
-$dbPassword = getenv("DB_PASSWORD") ?: "1111";
+$dbPassword = getenv("DB_PASSWORD") ?: "masukkan password db Anda di sini"; // Ganti dengan password database Anda  
 
 $conn = pg_connect(
     "host=$dbHost port=$dbPort dbname=$dbName user=$dbUser password=$dbPassword"

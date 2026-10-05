@@ -1,4 +1,6 @@
 <?php
+//dibuat oleh Rafalen Labibsani Farisqha (434251132)
+
 require_once __DIR__ . '/../config/database.php';
 require_once 'Crudable.php';
 
