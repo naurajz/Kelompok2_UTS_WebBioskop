@@ -164,7 +164,7 @@ unset($_SESSION['error']);
 <body>
 
     <div class="register-container">
-        <div class="brand">HIMTIX <span></div>
+        <div class="brand">HIMTI <span>MOVIE<span></div>
         <h2>Daftar Akun</h2>
 
         <?php if ($error): ?>
