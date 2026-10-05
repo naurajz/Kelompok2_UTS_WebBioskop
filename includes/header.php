@@ -34,7 +34,7 @@ $base         = htmlspecialchars($base_url, ENT_QUOTES, 'UTF-8');
 <nav class="navbar navbar-expand-lg navbar-dark site-navbar sticky-top shadow-sm">
     <div class="container">
         <a class="navbar-brand" href="<?= $base ?>index.php">
-            <i class="bi bi-film me-2"></i>HIMTI <span>MOVIE</span>
+            <i class="bi bi-film me-2"></i>HIMTIX <span>MOVIE</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
